@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.IO.MemoryMappedFiles;
 using Microsoft.Xna.Framework;
 
 using Monocle;
@@ -184,6 +185,9 @@ namespace Celeste.Mod.TheUltimateWednesday {
         public static FileStream stream;
         public static BinaryWriter fp = null;
 
+        public static FileStream mm_stream;
+        public static MemoryMappedFile mm_file;
+
         public string output_dir;
         public bool in_level;
 
@@ -199,6 +203,48 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
             output_dir = Path.Combine(Everest.PathGame, "tuw_outputs");
             Directory.CreateDirectory(output_dir);
+
+            open_mm_file();
+
+        }
+
+        public static void open_mm_file() 
+        {
+            //I don't wanna deal with figuring out reasonable ipc in c#
+            //https://github.com/EverestAPI/CelesteTAS-EverestInterop/blob/master/StudioCommunication/StudioCommunicationBase.cs
+            string target = "celeste_tuw";
+            bool wine = File.Exists("/proc/self/exe") && Environment.OSVersion.Platform.HasFlag(PlatformID.Win32NT);
+            bool non_windows = !Environment.OSVersion.Platform.HasFlag(PlatformID.Win32NT);
+
+            int buffer_size = 0x1000;
+
+            if (wine || non_windows) {
+                string filename = Path.Combine("/tmp", $"{target}.share");
+
+                if (File.Exists(filename)) {
+                    mm_stream = new FileStream(filename, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+                } else {
+                    mm_stream = new FileStream(filename, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
+                    mm_stream.SetLength(buffer_size);
+                }
+
+                mm_file = MemoryMappedFile.CreateFromFile(mm_stream, null, mm_stream.Length, MemoryMappedFileAccess.ReadWrite, null, HandleInheritability.None,
+                    true);
+            } else {
+                mm_file = MemoryMappedFile.CreateOrOpen(target, buffer_size);
+            }
+        }
+
+        public static void mm_write(byte[] buffer)
+        {
+            if(mm_file == null)
+            { return; }
+            using(MemoryMappedViewStream stream = mm_file.CreateViewStream())
+            {
+                BinaryWriter writer = new(stream);
+                stream.Position = 0;
+                writer.Write(buffer);
+            }
         }
 
         public override void Load() {
@@ -260,7 +306,6 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 byte[] header = header_state.to_bytes();
                 byte[] player = player_state.to_bytes();
                 byte[] input = input_state.to_bytes();
-            Logger.Log(LogLevel.Info, "tuw", ":" + player.Length + " " + input.Length);
                 ushort size = (ushort)(header.Length+player.Length+input.Length);
                 byte[] size_header = BitConverter.GetBytes(size);
                 byte[] buffer = new byte[2 + size];
@@ -274,6 +319,22 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 {
                     fp.Write(buffer);
                 }
+                byte[] map_buffer = Encoding.ASCII.GetBytes(map_name);
+                byte[] chapter_buffer = Encoding.ASCII.GetBytes("chapter name");
+                int mm_size = buffer.Length+map_buffer.Length+chapter_buffer.Length+2;
+                byte[] mm_buffer = new byte[mm_size];
+                int offset = 0;
+                byte[] mm_size_buff = BitConverter.GetBytes(mm_size-2);
+                buffer.CopyTo(mm_buffer, offset);
+                mm_buffer[0] = mm_size_buff[0];
+                mm_buffer[1] = mm_size_buff[1];
+                offset += buffer.Length;
+                map_buffer.CopyTo(mm_buffer, offset);
+                offset += map_buffer.Length+1;
+                chapter_buffer.CopyTo(mm_buffer, offset);
+                offset += chapter_buffer.Length+1;
+
+                mm_write(mm_buffer);
 
             }
         }
