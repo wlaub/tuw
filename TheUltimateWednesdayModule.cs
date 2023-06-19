@@ -166,6 +166,28 @@ namespace Celeste.Mod.TheUltimateWednesday {
  
     }
 
+    public struct StreamState
+    {
+        public string map_name;
+        public string chapter_name;
+
+        public byte[] to_bytes()
+        {
+            int size = map_name.Length+chapter_name.Length+2;
+
+            byte[] result = new byte[size];
+
+            int offset = 0;
+            Encoding.ASCII.GetBytes(map_name).CopyTo(result, offset);
+            offset += map_name.Length+1;
+            Encoding.ASCII.GetBytes(chapter_name).CopyTo(result, offset);
+            offset += chapter_name.Length+1;
+
+            return result;
+        }
+
+    }
+
     public class TheUltimateWednesdayModule : EverestModule {
         public static TheUltimateWednesdayModule Instance { get; private set; }
 
@@ -178,6 +200,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
         public static HeaderState header_state;
         public static PlayerState player_state;
         public static InputState input_state;
+        public static StreamState stream_state;
         public static string map_name;
         public static string room_name;
         public static uint sequence = 0;
@@ -265,6 +288,15 @@ namespace Celeste.Mod.TheUltimateWednesday {
             in_level = true;
             map_name = session.Area.SID.Replace(Path.DirectorySeparatorChar, '_');
             map_name = map_name.Replace(Path.AltDirectorySeparatorChar, '_');
+            map_name = map_name.Replace('-', '_');
+
+            string mod_name = session.Area.LevelSet;
+            mod_name = mod_name.Replace(Path.DirectorySeparatorChar, '_');
+            mod_name = mod_name.Replace(Path.AltDirectorySeparatorChar, '_');
+            mod_name = mod_name.Replace('-', '_');
+
+            stream_state.chapter_name = Dialog.Get(map_name);
+            stream_state.map_name = Dialog.Get(mod_name);
 
             string outfile = Path.Combine(output_dir, DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss_") + ".dump");
 
@@ -306,81 +338,35 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 byte[] header = header_state.to_bytes();
                 byte[] player = player_state.to_bytes();
                 byte[] input = input_state.to_bytes();
+                byte[] stream_info = stream_state.to_bytes();
+
                 ushort size = (ushort)(header.Length+player.Length+input.Length);
                 byte[] size_header = BitConverter.GetBytes(size);
-                byte[] buffer = new byte[2 + size];
-                size_header.CopyTo(buffer, 0);
-                header.CopyTo(buffer, 2);
-                player.CopyTo(buffer, 2+header.Length);
-                input.CopyTo(buffer, 2+header.Length+player.Length);
+
+                ushort mm_size = (ushort)(size + stream_info.Length);
+                byte[] mm_size_header = BitConverter.GetBytes(mm_size);
+
+                byte[] buffer = new byte[2 + mm_size];
+                int offset = 0;
+                size_header.CopyTo(buffer, offset);
+                offset += 2;
+                header.CopyTo(buffer, offset); offset += header.Length;
+                player.CopyTo(buffer, offset); offset += player.Length;
+                input.CopyTo(buffer, offset); offset += input.Length;
+                stream_info.CopyTo(buffer, offset); offset += stream_info.Length;
 
                 //write out
                 if(fp != null)
                 {
-                    fp.Write(buffer);
+                    fp.Write(buffer, 0, size+2);
                 }
-                byte[] map_buffer = Encoding.ASCII.GetBytes(map_name);
-                byte[] chapter_buffer = Encoding.ASCII.GetBytes("chapter name");
-                int mm_size = buffer.Length+map_buffer.Length+chapter_buffer.Length+2;
-                byte[] mm_buffer = new byte[mm_size];
-                int offset = 0;
-                byte[] mm_size_buff = BitConverter.GetBytes(mm_size-2);
-                buffer.CopyTo(mm_buffer, offset);
-                mm_buffer[0] = mm_size_buff[0];
-                mm_buffer[1] = mm_size_buff[1];
-                offset += buffer.Length;
-                map_buffer.CopyTo(mm_buffer, offset);
-                offset += map_buffer.Length+1;
-                chapter_buffer.CopyTo(mm_buffer, offset);
-                offset += chapter_buffer.Length+1;
+                buffer[0] = mm_size_header[0];
+                buffer[1] = mm_size_header[1];
 
-                mm_write(mm_buffer);
+                mm_write(buffer);
 
             }
         }
-
-
-        //Why is this language so obsessed with making trivial tasks inconvenient?
-        public static byte[] getBytes(PlayerState str) {
-            int size = Marshal.SizeOf(str);
-            size = 38; //Idk why Marshal.SizeOf gives 40. That's the wrong answer
-            byte[] arr = new byte[size];
-
-            IntPtr ptr = IntPtr.Zero;
-            try
-            {
-                ptr = Marshal.AllocHGlobal(size);
-                Marshal.StructureToPtr(str, ptr, true);
-                Marshal.Copy(ptr, arr, 0, size);
-            }
-            finally
-            {
-                Marshal.FreeHGlobal(ptr);
-            }
-            return arr;
-        }
-        //Why is this language so obsessed with making trivial tasks inconvenient?
-        public static byte[] getBytes(InputState str) {
-            int size = Marshal.SizeOf(str);
-            byte[] arr = new byte[size];
-
-            IntPtr ptr = IntPtr.Zero;
-            try
-            {
-                ptr = Marshal.AllocHGlobal(size);
-                Marshal.StructureToPtr(str, ptr, true);
-                Marshal.Copy(ptr, arr, 0, size);
-            }
-            finally
-            {
-                Marshal.FreeHGlobal(ptr);
-            }
-            return arr;
-        }
-
-
-
-
 
         public static bool update_header_state()
         {
