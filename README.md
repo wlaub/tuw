@@ -16,6 +16,10 @@ In total a packet is 74 bytes long plus the length of the current room name (wit
 
 ## Packet Format
 
+### Packet Length (2 bytes)
+
+An unsigned short giving the total length of the remained of the packet (not including the packet length)
+
 ### Header (24 bytes + room name)
 
 |Name | Type | Offset | Description |
