@@ -213,6 +213,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
         public string output_dir;
         public bool in_level;
+        public static bool first_packet;
 
         public TheUltimateWednesdayModule() {
             Instance = this;
@@ -298,7 +299,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
             stream_state.chapter_name = Dialog.Get(map_name);
             stream_state.map_name = Dialog.Get(mod_name);
 
-            string outfile = Path.Combine(output_dir, DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss_") + ".dump");
+            string outfile = Path.Combine(output_dir, DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss_") + map_name + ".dump");
 
             if(fp != null)
             {
@@ -309,6 +310,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
             //what was wrong with with open(filename, 'wb') as fp:?
             stream = File.Open(outfile, FileMode.Create);
             fp = new BinaryWriter(stream);
+            first_packet = true;
 
             Logger.Log(LogLevel.Info, "tuw", map_name);
 
@@ -358,7 +360,17 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 //write out
                 if(fp != null)
                 {
-                    fp.Write(buffer, 0, size+2);
+                    if(first_packet)
+                    {
+                        first_packet = false;
+                        buffer[0] = mm_size_header[0];
+                        buffer[1] = mm_size_header[1];
+                        fp.Write(buffer);
+                    }
+                    else
+                    {
+                        fp.Write(buffer, 0, size+2);
+                    }
                 }
                 buffer[0] = mm_size_header[0];
                 buffer[1] = mm_size_header[1];
