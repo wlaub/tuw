@@ -211,8 +211,8 @@ namespace Celeste.Mod.TheUltimateWednesday {
         public static FileStream mm_stream;
         public static MemoryMappedFile mm_file;
 
-        public string output_dir;
-        public bool in_level;
+        public static string output_dir;
+        public static bool in_level;
         public static bool first_packet;
 
         public TheUltimateWednesdayModule() {
@@ -299,6 +299,18 @@ namespace Celeste.Mod.TheUltimateWednesday {
             stream_state.chapter_name = Dialog.Get(map_name);
             stream_state.map_name = Dialog.Get(mod_name);
 
+            if(Settings.write_file)
+            {
+                open_dump_file();
+            }
+            Logger.Log(LogLevel.Info, "tuw", map_name);
+
+        }
+
+        public static void open_dump_file()
+        {
+            if(!in_level) return;
+
             string outfile = Path.Combine(output_dir, DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss_") + map_name + ".dump");
 
             if(fp != null)
@@ -312,17 +324,22 @@ namespace Celeste.Mod.TheUltimateWednesday {
             fp = new BinaryWriter(stream);
             first_packet = true;
 
-            Logger.Log(LogLevel.Info, "tuw", map_name);
+        }
 
+        public static void close_dump_file()
+        {
+            if(fp == null) return;
+            fp.Flush();
+            fp.Close();
+            stream.Close();
+            fp = null;
+ 
         }
 
         private void on_exit_hook(Level level, LevelExit exit, LevelExit.Mode mode, Session session, HiresSnow snow)
         {
             in_level = false;
-            fp.Flush();
-            fp.Close();
-            stream.Close();
-            fp = null;
+            close_dump_file();
         }
 
         public static void Update(On.Monocle.Engine.orig_Update orig, Engine self, GameTime gameTime)
@@ -358,6 +375,10 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 stream_info.CopyTo(buffer, offset); offset += stream_info.Length;
 
                 //write out
+                if(fp == null && Settings.write_file)
+                {
+                    open_dump_file();
+                }
                 if(fp != null)
                 {
                     if(first_packet)
@@ -371,6 +392,11 @@ namespace Celeste.Mod.TheUltimateWednesday {
                     {
                         fp.Write(buffer, 0, size+2);
                     }
+                    if(!Settings.write_file)
+                    {
+                        close_dump_file();
+                    }
+ 
                 }
                 buffer[0] = mm_size_header[0];
                 buffer[1] = mm_size_header[1];

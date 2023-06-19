@@ -1,0 +1,4 @@
+
+modoptions_tuw_write_file=Write File
+modoptions_tuw_write_file_desc=Write game state info to a file in Celeste/tuw_outputs
+
