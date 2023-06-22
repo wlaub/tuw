@@ -86,7 +86,7 @@ class GameState():
 
         self.strings = [x.decode('ascii') for x in raw.split(b'\x00')][:-1]
 
-class StateCollection():
+class StateDump():
     def __init__(self, filename):
         self.states = []
         self.rooms = set()

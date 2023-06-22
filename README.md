@@ -26,7 +26,7 @@ import tuw
 
 infile = sys.argv[1]
 start_time = time.time()
-states = tuw.StateCollection(infile)
+states = tuw.StateDump(infile)
 end_time = time.time()
 
 print(f'{len(states.states)} states loaded in {end_time-start_time:.2f} s')
