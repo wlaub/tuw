@@ -14,6 +14,35 @@ The best reference for the packet format is the actual implementation in `TheUlt
 
 In total a packet is 74 bytes long plus the length of the current room name (with null terminator), which may add several bytes. Room names are often 3-4 characters long (a00 or a-00), though they can be longer. Assuming a 5-character room name (+1 null terminator), each packet is 80 bytes long and the mod will write 4.8 KB/s (17.28 MB/hour) to the dump file if enabled.
 
+## tuw python module
+
+A simple python module is provided in `tuw/` for loading game state dumps:
+
+```python
+import sys, os
+import time
+
+import tuw
+
+infile = sys.argv[1]
+start_time = time.time()
+states = tuw.StateCollection(infile)
+end_time = time.time()
+
+print(f'{len(states.states)} states loaded in {end_time-start_time:.2f} s')
+print(states.map)
+print(states.chapter)
+print(states.rooms)
+```
+
+```
+wlaub@w:~/.local/share/Steam/steamapps/common/Celeste/Mods/TheUltimateWednesday$ python3 test.py ../../tuw_outputs/2023-06-21_16-27-52_iambad_twoteof_1_ch1.dump 
+398021 states loaded in 1.85 s
+Wednesday
+The Wednesday On The Edge Of Forever
+{'d-045', 'c-11'}
+```
+
 ## Packet Format
 
 ### Packet Length (2 bytes)
@@ -50,7 +79,7 @@ An unsigned short giving the total length of the remained of the packet (not inc
 
 |Name | Type | Offset | Description |
 |----|----|---|---|
-| button flags |  unsigned byte(1) | 0 | quick restart, escape, crouch dash, talk, grab, dash, jump |
+| button flags |  unsigned byte(1) | 0 | quick restart, pause, escape, crouch dash, talk, grab, dash, jump |
 | direction flags | unsigned byte(1) | 1 | 0, 0, 0, 0, up, down, left, right |
 | xaim | float (4) | 2 | Analog aim direction |
 | yaim | float (4) | 6 |  |
