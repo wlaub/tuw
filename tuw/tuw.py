@@ -110,7 +110,71 @@ class StateDump():
         self.chapter = self.states[0].strings[0]
         self.map = self.states[0].strings[1]
 
+    def extract_sequences(self, SequenceClass):
+        result = []
+        seq = SequenceClass()
+        for state in self.states:
+            seq.add_state(state)
+            if seq.done:
+                if seq.valid():
+                    result.append(seq)
+                seq = SequenceClass()
+
+        if result[-1] != seq and seq.valid():
+            result.append(seq)
+
+        return result
+
+class StateSequence():
+    """
+    A sequence of states with logic for segmenting and validation. Pass as an
+    argument to StateDump.extract_sequences to get a list of StateSequences.
+
+    add_state takes a state, adds it if appropriate, and updates self.done if
+    it terminates the sequence.
+
+    valid() returns False if the sequence is not valid and should be discarded
+    """
+
+    def __init__(self):
+        self.states = []
+        self.done = False
+
+    def valid(self):
+        raise NotImplementedError
+
+    def add_state(self, state):
+        raise NotImplementedError
+
+    def plot(self, ax):
+        xvals = []
+        yvals = []
+        for x in self.states:
+            xvals.append(x.xpos)
+            yvals.append(-x.ypos)
+
+        ax.scatter(xvals, yvals, s=1, c='k', alpha=0.1)
 
 
+class Run(StateSequence):
+    """
+    A run is a state sequence terminated by a death and having length of
+    at least 2 states.
+    """
+    def __init__(self):
+        super().__init__()
+        self.rooms = set()
+
+    def valid(self):
+        return len(self.states) > 1
+
+    def add_state(self, state):
+        if self.done: return
+
+        if ControlFlags.dead in state.control_flags:
+            self.done = True
+
+        self.states.append(state)
+        self.rooms.add(state.room)
 
 
