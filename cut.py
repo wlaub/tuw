@@ -35,7 +35,7 @@ class ClipRun(tuw.StateSequence):
     def add_state(self, state):
         if self.done: return
 
-        if ControlFlags.dead in state.control_flags:
+        if tuw.ControlFlags.dead in state.control_flags:
             self.ending = True
             if len(self.states) == 0:
                 self.done = True
@@ -45,14 +45,29 @@ class ClipRun(tuw.StateSequence):
         self.states.append(state)
         self.rooms.add(state.room)
 
+    def match_spawn(self, other):
+        dx = self.states[0].xpos - other.states[0].xpos
+        dy = self.states[0].ypos - other.states[0].ypos
+
+        dist = dx*dx + dy*dy
+        return dist < 8*8
 
 
-runs = states.extract_sequences(tuw.Run)
+runs = states.extract_sequences(ClipRun)
 print(f'{len(runs)} total runs')
 
 export_runs = []
 for idx, run in enumerate(runs):
+#    print(run.states[0].sequence, run.states[-1].sequence)
+    include = False
     if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
+        include = True
+    if idx < len(runs)-1:
+        next_run = runs[idx+1]
+        if not run.match_spawn(next_run):
+            include = True
+
+    if include:
         export_runs.append(run)
 
 base = moviepy.editor.VideoFileClip(video_file)
