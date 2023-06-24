@@ -153,7 +153,16 @@ class StateSequence():
             xvals.append(x.xpos)
             yvals.append(-x.ypos)
 
-        ax.scatter(xvals, yvals, s=1, c='k', alpha=0.1)
+        from matplotlib import patches
+        from matplotlib.collections import PatchCollection
+        rects = []
+        for x in self.states:
+            rect = patches.Rectangle((x.xpos-4, -x.ypos), 8,8)
+            rects.append(rect)
+        pc = PatchCollection(rects, facecolor='k', alpha=0.01)
+        ax.add_collection(pc)
+
+        ax.scatter(xvals, yvals, s=1, c='k', alpha=0)
 
 
 class Run(StateSequence):
