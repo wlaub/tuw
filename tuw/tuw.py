@@ -104,6 +104,9 @@ class StateDump():
                     self.states.append(state)
 
                     self.rooms.add(state.room)
+                except struct.error as e:
+                    print(f'malformed packet? {e}')
+                    pass
                 except Exception as e:
                     raise
 

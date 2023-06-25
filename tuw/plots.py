@@ -31,6 +31,7 @@ class Plotter():
     patch_kwargs = {
         'k': {
             'alpha': 0.01,
+            'zorder': 2,
             },
         'r': {
             'alpha': 0.5,
@@ -42,25 +43,45 @@ class Plotter():
             },
 
         }
+    default_kwargs = {
+        'alpha' : 0.01,
+        'zorder': 2,
+        }
 
     def __init__(self):
         self.patches = defaultdict(list)
+        self.bg_patches = defaultdict(list)
         self.fig, self.ax = plt.subplots(1,1)
         self.bounds = Bounds()
 
     @staticmethod
     def _state_box(x):
+        pos = (x.xpos-4, -x.ypos)
         h = 11
         if tuw.StatusFlags.crouched in x.status_flags:
             h = 6
         if tuw.PlayerState.star_fly == x.state:
             h = 8
-        return patches.Rectangle((x.xpos-4, -x.ypos), 8, h)
+        return patches.Rectangle(pos, 8, h)
 
     def _add_point(self, x, c):
-        rect = self._state_box(x)
+        patch = self._state_box(x)
         self.bounds.update(x.xpos, -x.ypos)
-        self.patches[c].append(rect)
+        self.patches[c].append(patch)
+
+        pos = (x.xpos, -x.ypos+6)
+
+        if x.state == tuw.PlayerState.red_dash:
+            self.bg_patches['r'].append(patches.Circle(pos, 8))
+        elif x.state == tuw.PlayerState.boost:
+            self.bg_patches['g'].append(patches.Circle(pos, 8))
+        elif x.state == tuw.PlayerState.star_fly:
+            self.bg_patches['y'].append(patches.Circle(pos, 4))
+
+
+
+
+
 
     def plot(self, seq):
         x = seq.states[0]
@@ -75,12 +96,23 @@ class Plotter():
 
     def show(self):
         pcs = {}
+        bg_pcs = {}
         for k, v in self.patches.items():
-            pcs[k] = PatchCollection(v, facecolors=k, linewidths=0,
-                            **self.patch_kwargs[k])
+            pcs[k] = PatchCollection(v, facecolors=k,
+                            linewidths=0,
+                            **self.patch_kwargs.get(k, self.default_kwargs))
+
+        for k,v in self.bg_patches.items():
+            kwargs = dict(self.patch_kwargs.get(k, self.default_kwargs))
+            kwargs['zorder'] = 1
+            bg_pcs[k] = PatchCollection(v, facecolors=k,
+                            linewidths=0, **kwargs)
 
         for k, v in pcs.items():
             self.ax.add_collection(v)
+        for k, v in bg_pcs.items():
+            self.ax.add_collection(v)
+
 
         self.ax.set_xlim(self.bounds.left, self.bounds.right)
         self.ax.set_ylim(self.bounds.bottom, self.bounds.top)
