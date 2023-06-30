@@ -34,6 +34,26 @@ class DirectionFlags(enum.Flag):
     left = 2
     right = 1
 
+class CollectionFlags(enum.Flag):
+    follower = 128
+
+    heart = 32
+    tape = 16
+    key_lost = 8
+    key = 4
+    seeds = 2
+    berry = 1
+
+class StateChangeFlags(enum.Flag):
+    clutter_switch = 128
+    textbox = 64
+    event = 32
+    flag = 16
+    fake_wall = 8
+    cutscene = 4
+    dash_block = 2
+    room_change = 1
+
 class PlayerState(enum.Enum):
     normal = 0
     climb = 1
@@ -74,6 +94,7 @@ class GameState():
         'control_flags', 'status_flags',
         'button_flags', 'direction_flags',
         'xaim', 'yaim',
+        'collection_flags', 'state_change_flags',
         'strings',
         )
     def __init__(self, raw):
@@ -102,6 +123,16 @@ class GameState():
         self.button_flags = ButtonFlags(buttons)
         self.direction_flags = DirectionFlags(directions)
         raw = raw[size:]
+
+        if len(raw) > 0 and raw[0] == 1:
+            size = int(raw[1])
+            raw = raw[2:]
+            self.collection_flags = CollectionFlags(int(raw[0]))
+            self.state_change_flags = StateChangeFlags(int(raw[1]))
+            raw = raw[size:]
+        else:
+            self.collection_flags = CollectionFlags(0)
+            self.state_change_flags = StateChangeFlags(0)
 
         self.strings = [x.decode('ascii') for x in raw.split(b'\x00')][:-1]
 

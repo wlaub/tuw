@@ -28,6 +28,8 @@ class ClipRun(tuw.StateSequence):
         super().__init__()
         self.rooms = set()
         self.ending = False
+        self.collection_flags = tuw.CollectionFlags(0)
+        self.state_change_flags = tuw.StateChangeFlags(0)
 
     def valid(self):
         return len(self.states) > 1
@@ -44,6 +46,8 @@ class ClipRun(tuw.StateSequence):
 
         self.states.append(state)
         self.rooms.add(state.room)
+        self.collection_flags |= state.collection_flags
+        self.state_change_flags |= state.state_change_flags
 
     def match_spawn(self, other):
         dx = self.states[0].xpos - other.states[0].xpos
@@ -63,6 +67,12 @@ for idx, run in enumerate(runs):
 #    if idx in [6]: include = True
     if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
         include = True
+    if run.state_change_flags:
+        print(run.state_change_flags)
+        include = True
+    if run.collection_flags.value & 0x7f:
+        print(run.collection_flags)
+        include = True
     if idx < len(runs)-1:
         next_run = runs[idx+1]
         if not run.match_spawn(next_run):
@@ -70,6 +80,7 @@ for idx, run in enumerate(runs):
 
     if include:
         export_runs.append(run)
+
 
 base = moviepy.editor.VideoFileClip(video_file)
 clips = []

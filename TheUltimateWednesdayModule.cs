@@ -8,6 +8,8 @@ using Microsoft.Xna.Framework;
 
 using Monocle;
 
+using MonoMod.Utils;
+
 using Celeste;
 using Celeste.Mod;
 
@@ -166,6 +168,57 @@ namespace Celeste.Mod.TheUltimateWednesday {
  
     }
 
+    public struct TransientState
+    {
+        
+        //7  gain_follower;
+        //6
+        //5  heart_get;
+        //4  tape_get;
+        //3  key_lost;
+        //2  key_collected;
+        //1  seeds_collected;
+        //0  berry_collected;
+
+        //7  clutter switch
+        //6  text box
+        //5  
+        //4  flag_change;
+        //3  fake_wall; //not implemented, can't find a place to hook
+        //2  cutscene;
+        //1  dash_block;
+        //0  room change //not implemented lol
+
+        public byte collection_flags;
+        public byte state_flags; 
+
+        public void clear()
+        {
+            collection_flags = 0;
+            state_flags = 0;
+        }
+
+        public bool has()
+        {
+            return (collection_flags | state_flags) != 0;
+        }
+
+        public byte[] to_bytes()
+        {
+            byte[] result = new byte[4];
+
+            result[0] = 0x01; //transient packet type
+            result[1] = 0x02; //packet length
+            result[2] = collection_flags;
+            result[3] = state_flags;
+
+            return result;
+        }
+
+
+
+    }
+
     public struct StreamState
     {
         public string map_name;
@@ -201,6 +254,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
         public static PlayerState player_state;
         public static InputState input_state;
         public static StreamState stream_state;
+        public static TransientState trans_state;
         public static string map_name;
         public static string room_name;
         public static uint sequence = 0;
@@ -275,54 +329,122 @@ namespace Celeste.Mod.TheUltimateWednesday {
             Everest.Events.Level.OnEnter += on_enter_hook;
             Everest.Events.Level.OnExit += on_exit_hook;
             On.Monocle.Engine.Update += Update;
+
+
+            //Transients
+            //Collection
+            On.Celeste.Leader.GainFollower += gain_follower_hook;
+            On.Celeste.StrawberrySeed.OnAllCollected += seeds_hook;
+            On.Celeste.Strawberry.OnCollect += berry_hook;
+            On.Celeste.Key.OnPlayer += key_hook;
+            On.Celeste.Key.RegisterUsed += door_hook;
+            On.Celeste.Cassette.OnPlayer += tape_hook;
+            On.Celeste.HeartGem.Collect += heart_hook;
+            //7
+
+            //State Change
+            On.Celeste.ClutterSwitch.BePressed += clutter_switch_hook;
+            On.Celeste.DashBlock.RemoveAndFlagAsGone += dash_block_hook;
+            //Fake walls
+            On.Celeste.Session.SetFlag += flag_hook;
+            On.Celeste.CutsceneEntity.Start += cutscene_hook;
+            On.Celeste.MiniTextboxTrigger.Trigger += text_hook;
+            //6
+            //7
+
+
         }
 
         public override void Unload() {
-            Everest.Events.Level.OnEnter -= on_enter_hook;
-            Everest.Events.Level.OnExit -= on_exit_hook;
             On.Monocle.Engine.Update -= Update;
+
+            //Transients
+            On.Celeste.Leader.GainFollower -= gain_follower_hook;
+            On.Celeste.StrawberrySeed.OnAllCollected -= seeds_hook;
+            On.Celeste.Strawberry.OnCollect -= berry_hook;
+            On.Celeste.Key.OnPlayer -= key_hook;
+            On.Celeste.Cassette.OnPlayer -= tape_hook;
+            On.Celeste.ClutterSwitch.BePressed -= clutter_switch_hook;
+            On.Celeste.DashBlock.RemoveAndFlagAsGone -= dash_block_hook;
+            On.Celeste.HeartGem.Collect -= heart_hook;
+            On.Celeste.Key.RegisterUsed -= door_hook;
+            On.Celeste.CutsceneEntity.Start -= cutscene_hook;
+            On.Celeste.Session.SetFlag -= flag_hook;
+            On.Celeste.MiniTextboxTrigger.Trigger -= text_hook;
+
         }
 
         public void gain_follower_hook(On.Celeste.Leader.orig_GainFollower orig, Leader self, Follower follower)
         {
+            Logger.Log(LogLevel.Info, "tuw", "follower");
             orig(self, follower);
+            trans_state.collection_flags |= 0x01<<7;
         }
 
         public void seeds_hook(On.Celeste.StrawberrySeed.orig_OnAllCollected orig, StrawberrySeed self)
         {
+            trans_state.collection_flags |= 0x01<<1;
             orig(self);
         }
         public void berry_hook(On.Celeste.Strawberry.orig_OnCollect orig, Strawberry self)
         {
+            trans_state.collection_flags |= 0x01;
             orig(self);
         }
         public void key_hook(On.Celeste.Key.orig_OnPlayer orig, Key self, Player player)
         {
+            trans_state.collection_flags |= 0x01<<2;
             orig(self, player);
         }
         public void tape_hook(On.Celeste.Cassette.orig_OnPlayer orig, Cassette self, Player player)
         {
+            trans_state.collection_flags |= 0x01<<4;
             orig(self, player);
         }
         public void clutter_switch_hook(On.Celeste.ClutterSwitch.orig_BePressed orig, ClutterSwitch self)
         {
+            trans_state.state_flags |= 0x01<<7;
             orig(self);
         }
         public void dash_block_hook(On.Celeste.DashBlock.orig_RemoveAndFlagAsGone orig, DashBlock self)
         {
+            trans_state.state_flags |= 0x01<<1;
             orig(self);
         }
         public void heart_hook(On.Celeste.HeartGem.orig_Collect orig, HeartGem self, Player player)
         {
+            trans_state.collection_flags |= 0x01<<5;
             orig(self, player);
         }
         public void door_hook(On.Celeste.Key.orig_RegisterUsed orig, Key self)
         {
+            trans_state.collection_flags |= 0x01<<3;
             orig(self);
         }
-        public void text_hook(On.Celeste.Textbox.orig_Close orig, Textbox self)
+        public void cutscene_hook(On.Celeste.CutsceneEntity.orig_Start orig, CutsceneEntity self)
         {
+            trans_state.state_flags |= 0x01<<2;
             orig(self);
+        }
+        public void text_hook(On.Celeste.MiniTextboxTrigger.orig_Trigger orig, MiniTextboxTrigger self)
+        {
+            DynamicData data = new DynamicData(self);
+            bool before = data.Get<bool>("triggered");
+            orig(self);
+            bool after = data.Get<bool>("triggered");
+            if(!before && after)
+            {
+                trans_state.state_flags |= 0x01<<6;
+            }
+        }
+
+        public void flag_hook(On.Celeste.Session.orig_SetFlag orig, Session self, string flag, bool set_to)
+        {
+            if(self.GetFlag(flag) != set_to)
+            {
+                trans_state.state_flags |= 0x01<<4;
+            }
+            orig(self, flag, set_to);
         }
 
         private void on_enter_hook(Session session, bool fromSaveData)
@@ -398,13 +520,23 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 byte[] header = header_state.to_bytes();
                 byte[] player = player_state.to_bytes();
                 byte[] input = input_state.to_bytes();
+                byte[] transient_info = trans_state.to_bytes();
                 byte[] stream_info = stream_state.to_bytes();
+
+                bool has_transient = trans_state.has();
+                trans_state.clear();
 
                 ushort size = (ushort)(header.Length+player.Length+input.Length);
                 byte[] size_header = BitConverter.GetBytes(size);
 
-                ushort mm_size = (ushort)(size + stream_info.Length);
+                ushort mm_size = (ushort)(size + transient_info.Length + stream_info.Length);
                 byte[] mm_size_header = BitConverter.GetBytes(mm_size);
+
+                if(has_transient)
+                {   //Include the transient output in the dump buffer, update size accordingly
+                    size += (ushort)transient_info.Length;
+                    size_header = BitConverter.GetBytes(size);
+                }
 
                 byte[] buffer = new byte[2 + mm_size];
                 int offset = 0;
@@ -413,6 +545,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 header.CopyTo(buffer, offset); offset += header.Length;
                 player.CopyTo(buffer, offset); offset += player.Length;
                 input.CopyTo(buffer, offset); offset += input.Length;
+                transient_info.CopyTo(buffer, offset); offset += transient_info.Length;
                 stream_info.CopyTo(buffer, offset); offset += stream_info.Length;
 
                 //write out

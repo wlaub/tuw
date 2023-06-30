@@ -12,7 +12,7 @@ The mod only produces new state information while in-game and will not update in
 
 The best reference for the packet format is the actual implementation in `TheUltimateWednesdayModule.cs`. At present it consists of 4 parts: Header, Player State, Inputs, Stream Info. Each packet is preceded by an unsigned short giving its total size in bytes.
 
-In total a packet is 74 bytes long plus the length of the current room name (with null terminator), which may add several bytes. Room names are often 3-4 characters long (a00 or a-00), though they can be longer. Assuming a 5-character room name (+1 null terminator), each packet is 80 bytes long and the mod will write 4.8 KB/s (17.28 MB/hour) to the dump file if enabled.
+In total a packet is 74 bytes long plus the length of the current room name (with null terminator) plus transient packets when transient events happen, which may add several bytes. Room names are often 3-4 characters long (a00 or a-00), though they can be longer. Assuming a 5-character room name (+1 null terminator), each packet is 80 bytes long and the mod will write 4.8 KB/s (17.28 MB/hour) to the dump file if enabled.
 
 ## tuw python module
 
@@ -83,6 +83,19 @@ An unsigned short giving the total length of the remained of the packet (not inc
 | direction flags | unsigned byte(1) | 1 | 0, 0, 0, 0, up, down, left, right |
 | xaim | float (4) | 2 | Analog aim direction |
 | yaim | float (4) | 6 |  |
+
+### Transient State (4 bytes)
+
+The packet only appears in the dump file when it contains an event. It always appears in the memory-mapped file.
+
+|Name | Type | Offset | Description |
+|----|----|---|---|
+| id = 0x01 |  unsigned byte(1) | 0 | Indicates that this is a transient state packet |
+| length = 0x02 | unsigned byte(1) | 1 | Length of the remainder packet |
+| collection flags | unsigned byte (1) | 2 | follower, 0, heart, tap, key lost, key, seeds, berry |
+| state flags | unsigned byte (1) | 3 | clutter switch, minitextbox, 0, flag change, fake wall\*, cutscene, dash block, room change\* |
+
+\* = Not implemented
 
 ### Stream Info
 This is an arbitrary length sequence of null-terminated ascii strings. The first one is the current chapter name, and the second one is the current mod (map) name.
