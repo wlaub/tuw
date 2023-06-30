@@ -283,6 +283,47 @@ namespace Celeste.Mod.TheUltimateWednesday {
             On.Monocle.Engine.Update -= Update;
         }
 
+        public void gain_follower_hook(On.Celeste.Leader.orig_GainFollower orig, Leader self, Follower follower)
+        {
+            orig(self, follower);
+        }
+
+        public void seeds_hook(On.Celeste.StrawberrySeed.orig_OnAllCollected orig, StrawberrySeed self)
+        {
+            orig(self);
+        }
+        public void berry_hook(On.Celeste.Strawberry.orig_OnCollect orig, Strawberry self)
+        {
+            orig(self);
+        }
+        public void key_hook(On.Celeste.Key.orig_OnPlayer orig, Key self, Player player)
+        {
+            orig(self, player);
+        }
+        public void tape_hook(On.Celeste.Cassette.orig_OnPlayer orig, Cassette self, Player player)
+        {
+            orig(self, player);
+        }
+        public void clutter_switch_hook(On.Celeste.ClutterSwitch.orig_BePressed orig, ClutterSwitch self)
+        {
+            orig(self);
+        }
+        public void dash_block_hook(On.Celeste.DashBlock.orig_RemoveAndFlagAsGone orig, DashBlock self)
+        {
+            orig(self);
+        }
+        public void heart_hook(On.Celeste.HeartGem.orig_Collect orig, HeartGem self, Player player)
+        {
+            orig(self, player);
+        }
+        public void door_hook(On.Celeste.Key.orig_RegisterUsed orig, Key self)
+        {
+            orig(self);
+        }
+        public void text_hook(On.Celeste.Textbox.orig_Close orig, Textbox self)
+        {
+            orig(self);
+        }
 
         private void on_enter_hook(Session session, bool fromSaveData)
         {

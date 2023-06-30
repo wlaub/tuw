@@ -60,6 +60,22 @@ class PlayerState(enum.Enum):
     attract = 22
 
 class GameState():
+    __slots__ = (
+        'sequence',
+        'timestamp',
+        'time',
+        'deaths',
+        'room',
+        'xpos', 'ypos',
+        'xvel', 'yvel',
+        'stamina', 'xlift', 'ylift',
+        'state',
+        'dashes',
+        'control_flags', 'status_flags',
+        'button_flags', 'direction_flags',
+        'xaim', 'yaim',
+        'strings',
+        )
     def __init__(self, raw):
         self.sequence, self.timestamp, self.time, self.deaths = struct.unpack('=Idqi', raw[:24])
         raw = raw[24:]
@@ -74,7 +90,10 @@ class GameState():
             state, self.dashes, control, status) = struct.unpack(player_state_fmt, raw[:size])
         self.control_flags = ControlFlags(control)
         self.status_flags = StatusFlags(status)
-        self.state = PlayerState(state)
+        try:
+            self.state = PlayerState(state)
+        except ValueError:
+            self.state = state
         raw = raw[size:]
 
         input_state_fmt = '=BBff'
@@ -123,7 +142,7 @@ class StateDump():
                     result.append(seq)
                 seq = SequenceClass()
 
-        if result[-1] != seq and seq.valid():
+        if (len(result) == 0 or result[-1] != seq) and seq.valid():
             result.append(seq)
 
         return result

@@ -60,6 +60,7 @@ export_runs = []
 for idx, run in enumerate(runs):
 #    print(run.states[0].sequence, run.states[-1].sequence)
     include = False
+#    if idx in [6]: include = True
     if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
         include = True
     if idx < len(runs)-1:
@@ -75,8 +76,22 @@ clips = []
 for run in export_runs:
     start = run.states[0].timestamp-video_start_time
     end = run.states[-1].timestamp-video_start_time
+
+    if end < 0: continue
+    if start > base.duration: continue
+
+    if start < 0:
+        print(f'start clipped from {start} to 0')
+        start = 0
+    if end > base.duration:
+        print(f'end clipped from {end} to {base.duration}')
+        end = base.duration
+
     clip = base.subclip(start, end)
     clips.append(clip)
+
+print(len(export_runs))
+print(len(clips))
 
 out_clip = moviepy.editor.concatenate_videoclips(clips)
 out_clip.write_videofile('output.mp4')
