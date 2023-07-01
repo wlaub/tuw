@@ -69,7 +69,9 @@ for run in runs:
 for room, room_runs in room_map.items():
     try:
         grp = tuw.clusters.GroupClusters(room_runs)
-        cluster_runs.extend(grp.get_best_runs(5, lambda x:x.run.states[0].sequence))
+        count = len(grp.labels_by_size)
+        N = int(count/6)
+        cluster_runs.extend(grp.get_best_runs(N, lambda x:x.run.states[0].sequence))
     except Exception as e:
         print(f'Failed to cluster on {room}: {e}')
 
@@ -78,35 +80,46 @@ for room, room_runs in room_map.items():
         longest = max(sub_runs, key= lambda x: x.get_length())
         longest_fails.append(longest)
 
+
+counts = defaultdict(lambda:0)
+
 export_runs = []
 for idx, run in enumerate(runs):
 #    print(run.states[0].sequence, run.states[-1].sequence)
     include = False
 #    if idx in [6]: include = True
     if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
+        counts['room change'] += 1
         include = True
-    if run.state_change_flags.value & 0xef:
-        print(run.state_change_flags)
+    elif run.state_change_flags.value & 0xef:
+        counts['state change'] += 1
+#        print(run.state_change_flags)
         include = True
-    if run.collection_flags.value & 0x7f:
-        print(run.collection_flags)
+    elif run.collection_flags.value & 0x7f:
+        counts['collection'] += 1
+#        print(run.collection_flags)
         include = True
-    if idx < len(runs)-1:
-        next_run = runs[idx+1]
-        if not run.match_spawn(next_run):
-            include = True
-
-    if not include and run in cluster_runs:
-        print(f'{idx}: from cluster')
+    elif idx < len(runs)-1 and not run.match_spawn(runs[idx+1]):
+        counts['spawn change next'] += 1
         include = True
-    if not include and run in longest_fails:
-        print(f'{idx}: from longest fails')
+    elif idx > 0 and not run.match_spawn(runs[idx-1]):
+        counts['spawn change prev'] += 1
+        include = True
+    elif run in cluster_runs:
+        counts['clusters'] += 1
+#        print(f'{idx}: from cluster')
+        include = True
+    elif run in longest_fails:
+        counts['long fails'] += 1
+#        print(f'{idx}: from longest fails')
         include = True
 
 
     if include:
         export_runs.append(run)
 
+for key, val in counts.items():
+    print(f'{key}: {val} runs')
 
 print(len(export_runs))
 

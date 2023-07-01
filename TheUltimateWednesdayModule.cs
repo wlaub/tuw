@@ -449,17 +449,23 @@ namespace Celeste.Mod.TheUltimateWednesday {
             orig(self, flag, set_to);
         }
 
+        public string make_string_more_better(string input)
+        {
+            string result;
+            result = input.Replace(Path.DirectorySeparatorChar, '_');
+            result = result.Replace(Path.AltDirectorySeparatorChar, '_');
+            result = result.Replace('-', '_');
+            result = result.Replace(' ', '_');
+            return result;
+
+        }
+
         private void on_enter_hook(Session session, bool fromSaveData)
         {
             in_level = true;
-            map_name = session.Area.SID.Replace(Path.DirectorySeparatorChar, '_');
-            map_name = map_name.Replace(Path.AltDirectorySeparatorChar, '_');
-            map_name = map_name.Replace('-', '_');
+            map_name = make_string_more_better(session.Area.SID);
 
-            string mod_name = session.Area.LevelSet;
-            mod_name = mod_name.Replace(Path.DirectorySeparatorChar, '_');
-            mod_name = mod_name.Replace(Path.AltDirectorySeparatorChar, '_');
-            mod_name = mod_name.Replace('-', '_');
+            string mod_name = make_string_more_better(session.Area.LevelSet);
 
             stream_state.chapter_name = Dialog.Get(map_name);
             stream_state.map_name = Dialog.Get(mod_name);

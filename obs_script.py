@@ -1,3 +1,4 @@
+import os
 import time
 import mmap
 import struct
@@ -77,16 +78,36 @@ class Handler():
 
 handler = Handler()
 
+def cb(event):
+    stamp = time.time()
+    filepath = obs.obs_frontend_get_current_record_output_path()
+    if event == obs.OBS_FRONTEND_EVENT_RECORDING_STARTED:
+        filename = obs.obs_frontend_get_last_recording()
+        write_event(filepath, filename, stamp, 'start')
+    elif event == obs.OBS_FRONTEND_EVENT_RECORDING_PAUSED:
+        filename = obs.obs_frontend_get_last_recording()
+        write_event(filepath, filename, stamp, 'pause')
+    elif event == obs.OBS_FRONTEND_EVENT_RECORDING_UNPAUSED:
+        filename = obs.obs_frontend_get_last_recording()
+        write_event(filepath, filename, stamp, 'resume')
+    elif event == obs.OBS_FRONTEND_EVENT_RECORDING_STOPPED:
+        filename = obs.obs_frontend_get_last_recording()
+        write_event(filepath, filename, stamp, 'stop')
+
 def script_unload():
     print('Unloading')
     obs.timer_remove(do_tick)
     handler.close()
     set_message('')
 
+    obs.obs_frontend_remove_event_callback(cb)
+
 def script_load(settings):
     obs.timer_add(do_tick, 50)
     set_message('')
     handler.open()
+
+    obs.obs_frontend_add_event_callback(cb)
 
 def script_description():
     return 'A script.'
