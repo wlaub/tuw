@@ -68,7 +68,7 @@ for run in runs:
 
 for room, runs in room_map.items():
     grp = tuw.clusters.GroupClusters(runs)
-    cluster_runs.extend(grp.get_best_runs(5))
+    cluster_runs.extend(grp.get_best_runs(5, lambda x:x.run.states[0].sequence))
 
     sub_runs = filter(lambda x: len(x.rooms) == 1, runs)
     longest = max(sub_runs, key= lambda x: x.get_length())
