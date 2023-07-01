@@ -66,13 +66,17 @@ for run in runs:
     for room in run.rooms:
         room_map[room].append(run)
 
-for room, runs in room_map.items():
-    grp = tuw.clusters.GroupClusters(runs)
-    cluster_runs.extend(grp.get_best_runs(5, lambda x:x.run.states[0].sequence))
+for room, room_runs in room_map.items():
+    try:
+        grp = tuw.clusters.GroupClusters(room_runs)
+        cluster_runs.extend(grp.get_best_runs(5, lambda x:x.run.states[0].sequence))
+    except Exception as e:
+        print(f'Failed to cluster on {room}: {e}')
 
-    sub_runs = filter(lambda x: len(x.rooms) == 1, runs)
-    longest = max(sub_runs, key= lambda x: x.get_length())
-    longest_fails.append(longest)
+    sub_runs = list(filter(lambda x: len(x.rooms) == 1, room_runs))
+    if len(sub_runs) != 0:
+        longest = max(sub_runs, key= lambda x: x.get_length())
+        longest_fails.append(longest)
 
 export_runs = []
 for idx, run in enumerate(runs):
