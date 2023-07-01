@@ -52,7 +52,7 @@ class StateChangeFlags(enum.Flag):
     fake_wall = 8
     cutscene = 4
     dash_block = 2
-    room_change = 1
+    respawn_change = 1
 
 class PlayerState(enum.Enum):
     normal = 0
@@ -193,11 +193,32 @@ class StateSequence():
         self.states = []
         self.done = False
 
+        self.rooms = set()
+        self.collection_flags = CollectionFlags(0)
+        self.state_change_flags = StateChangeFlags(0)
+
+        self.length = None
+
     def valid(self):
         raise NotImplementedError
 
     def add_state(self, state):
         raise NotImplementedError
+
+    def _add_state(self, state):
+        self.states.append(state)
+        self.rooms.add(state.room)
+        self.collection_flags |= state.collection_flags
+        self.state_change_flags |= state.state_change_flags
+
+    def get_length(self):
+        if self.length is not None: return self.length
+
+        self.length = 0
+        for a,b in zip(self.states[:-1], self.states[1:]):
+            self.length += (a.xpos-b.xpos)**2 + (a.ypos-b.ypos)**2
+
+        return self.length
 
     def plot(self, ax):
         xvals = []
@@ -225,7 +246,6 @@ class Run(StateSequence):
     """
     def __init__(self):
         super().__init__()
-        self.rooms = set()
 
     def valid(self):
         return len(self.states) > 1
@@ -236,7 +256,6 @@ class Run(StateSequence):
         if ControlFlags.dead in state.control_flags:
             self.done = True
 
-        self.states.append(state)
-        self.rooms.add(state.room)
+        self._add_state(state)
 
 

@@ -93,7 +93,7 @@ The packet only appears in the dump file when it contains an event. It always ap
 | id = 0x01 |  unsigned byte(1) | 0 | Indicates that this is a transient state packet |
 | length = 0x02 | unsigned byte(1) | 1 | Length of the remainder packet |
 | collection flags | unsigned byte (1) | 2 | follower, 0, heart, tap, key lost, key, seeds, berry |
-| state flags | unsigned byte (1) | 3 | clutter switch, minitextbox, 0, flag change, fake wall\*, cutscene, dash block, room change\* |
+| state flags | unsigned byte (1) | 3 | clutter switch, minitextbox, 0, flag change, fake wall\*, cutscene, dash block, respawn change |
 
 \* = Not implemented
 

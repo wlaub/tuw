@@ -1,9 +1,12 @@
 import sys, os
 import time
 
+from collections import defaultdict
+
 import moviepy.editor
 
 import tuw
+import tuw.clusters
 
 infile = sys.argv[1]
 video_file = sys.argv[2]
@@ -26,10 +29,7 @@ class ClipRun(tuw.StateSequence):
     """
     def __init__(self):
         super().__init__()
-        self.rooms = set()
         self.ending = False
-        self.collection_flags = tuw.CollectionFlags(0)
-        self.state_change_flags = tuw.StateChangeFlags(0)
 
     def valid(self):
         return len(self.states) > 1
@@ -44,10 +44,7 @@ class ClipRun(tuw.StateSequence):
         elif self.ending:
             self.done = True
 
-        self.states.append(state)
-        self.rooms.add(state.room)
-        self.collection_flags |= state.collection_flags
-        self.state_change_flags |= state.state_change_flags
+        self._add_state(state)
 
     def match_spawn(self, other):
         dx = self.states[0].xpos - other.states[0].xpos
@@ -60,6 +57,23 @@ class ClipRun(tuw.StateSequence):
 runs = states.extract_sequences(ClipRun)
 print(f'{len(runs)} total runs')
 
+
+cluster_runs = []
+longest_fails = []
+
+room_map = defaultdict(list)
+for run in runs:
+    for room in run.rooms:
+        room_map[room].append(run)
+
+for room, runs in room_map.items():
+    grp = tuw.clusters.GroupClusters(runs)
+    cluster_runs.extend(grp.get_best_runs(5))
+
+    sub_runs = filter(lambda x: len(x.rooms) == 1, runs)
+    longest = max(sub_runs, key= lambda x: x.get_length())
+    longest_fails.append(longest)
+
 export_runs = []
 for idx, run in enumerate(runs):
 #    print(run.states[0].sequence, run.states[-1].sequence)
@@ -67,7 +81,7 @@ for idx, run in enumerate(runs):
 #    if idx in [6]: include = True
     if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
         include = True
-    if run.state_change_flags:
+    if run.state_change_flags.value & 0xef:
         print(run.state_change_flags)
         include = True
     if run.collection_flags.value & 0x7f:
@@ -78,9 +92,19 @@ for idx, run in enumerate(runs):
         if not run.match_spawn(next_run):
             include = True
 
+    if not include and run in cluster_runs:
+        print(f'{idx}: from cluster')
+        include = True
+    if not include and run in longest_fails:
+        print(f'{idx}: from longest fails')
+        include = True
+
+
     if include:
         export_runs.append(run)
 
+
+print(len(export_runs))
 
 base = moviepy.editor.VideoFileClip(video_file)
 clips = []
@@ -101,7 +125,7 @@ for run in export_runs:
     clip = base.subclip(start, end)
     clips.append(clip)
 
-print(len(export_runs))
+
 print(len(clips))
 
 out_clip = moviepy.editor.concatenate_videoclips(clips)

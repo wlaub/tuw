@@ -187,7 +187,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
         //3  fake_wall; //not implemented, can't find a place to hook
         //2  cutscene;
         //1  dash_block;
-        //0  room change //not implemented lol
+        //0  respawn change
 
         public byte collection_flags;
         public byte state_flags; 
@@ -268,6 +268,8 @@ namespace Celeste.Mod.TheUltimateWednesday {
         public static string output_dir;
         public static bool in_level;
         public static bool first_packet;
+
+        public static Vector2? respawn = null;
 
         public TheUltimateWednesdayModule() {
             Instance = this;
@@ -639,6 +641,12 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 bool wall_right = (bool)(walljumpcheck.Invoke(player, param));
 
                 player_state.pack_status_flags(holding, crouched, facing_left, wall_left, wall_right, coyote, safe_ground, ground);
+
+                if(level.Session.RespawnPoint != respawn)
+                {
+                    respawn = level.Session.RespawnPoint;
+                    trans_state.state_flags |= 1;
+                }
 
                 return true;
             }
