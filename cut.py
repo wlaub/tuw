@@ -53,6 +53,10 @@ class ClipRun(tuw.StateSequence):
         dist = dx*dx + dy*dy
         return dist < 8*8
 
+    def get_segments(self):
+        result = []
+        return [(self.states[0].timestamp,self.states[-1].timestamp)]
+
 
 runs = states.extract_sequences(ClipRun)
 print(f'{len(runs)} total runs')
@@ -76,7 +80,7 @@ for room, room_runs in room_map.items():
         print(f'Failed to cluster on {room}: {e}')
 
     sub_runs = list(filter(lambda x: len(x.rooms) == 1, room_runs))
-    if len(sub_runs) != 0:
+    if len(sub_runs) >= 10:
         longest = max(sub_runs, key= lambda x: x.get_length())
         longest_fails.append(longest)
 
@@ -102,7 +106,7 @@ for idx, run in enumerate(runs):
     elif idx < len(runs)-1 and not run.match_spawn(runs[idx+1]):
         counts['spawn change next'] += 1
         include = True
-    elif idx > 0 and not run.match_spawn(runs[idx-1]):
+    elif idx > 0 and not run.match_spawn(runs[idx-1]) and not (run.state_change_flags.value&0x01 == 0):
         counts['spawn change prev'] += 1
         include = True
     elif run in cluster_runs:
@@ -114,6 +118,8 @@ for idx, run in enumerate(runs):
 #        print(f'{idx}: from longest fails')
         include = True
 
+    if run.states[0].deaths == 5831:
+        include = True
 
     if include:
         export_runs.append(run)
@@ -121,26 +127,29 @@ for idx, run in enumerate(runs):
 for key, val in counts.items():
     print(f'{key}: {val} runs')
 
+
 print(len(export_runs))
 
 base = moviepy.editor.VideoFileClip(video_file)
 clips = []
 for run in export_runs:
-    start = run.states[0].timestamp-video_start_time
-    end = run.states[-1].timestamp-video_start_time
 
-    if end < 0: continue
-    if start > base.duration: continue
+    for start, end in run.get_segments():
+        start -= video_start_time
+        end -= video_start_time
+        if end < 0: continue
+        if start > base.duration: continue
 
-    if start < 0:
-        print(f'start clipped from {start} to 0')
-        start = 0
-    if end > base.duration:
-        print(f'end clipped from {end} to {base.duration}')
-        end = base.duration
 
-    clip = base.subclip(start, end)
-    clips.append(clip)
+        if start < 0:
+            print(f'start clipped from {start} to 0')
+            start = 0
+        if end > base.duration:
+            print(f'end clipped from {end} to {base.duration}')
+            end = base.duration
+
+        clip = base.subclip(start, end)
+        clips.append(clip)
 
 
 print(len(clips))

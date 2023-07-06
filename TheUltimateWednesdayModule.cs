@@ -80,14 +80,14 @@ namespace Celeste.Mod.TheUltimateWednesday {
             return result;
         }
 
-        public void pack_control_flags(bool dead, bool control, bool cutscene, bool transition)
+        public void pack_control_flags(bool dead, bool control, bool cutscene, bool transition, bool paused)
         {
             control_flags = (byte)(
                   (dead ? 1 << 7 : 0)
                 | (control ? 1 << 6 : 0)
                 | (cutscene ? 1 << 5 : 0)
                 | (transition ? 1 << 4 : 0)
-                | (false ? 1 << 3 : 0)
+                | (paused ? 1 << 3 : 0)
                 | (false ? 1 << 2 : 0)
                 | (false ? 1 << 1 : 0)
                 | (false ? 1 : 0)
@@ -378,7 +378,6 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
         public void gain_follower_hook(On.Celeste.Leader.orig_GainFollower orig, Leader self, Follower follower)
         {
-            Logger.Log(LogLevel.Info, "tuw", "follower");
             orig(self, follower);
             trans_state.collection_flags |= 0x01<<7;
         }
@@ -629,7 +628,8 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 bool control = player.InControl;
                 bool cutscene = level.InCutscene;
                 bool transition = level.Transitioning;
-                player_state.pack_control_flags(dead, control, cutscene, transition);
+                bool paused = level.Paused;
+                player_state.pack_control_flags(dead, control, cutscene, transition, paused);
 
                 bool holding = (player.Holding != null);
                 bool ground = player.LoseShards;

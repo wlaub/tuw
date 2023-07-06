@@ -7,6 +7,7 @@ class ControlFlags(enum.Flag):
     control = 64
     cutscene = 32
     transition = 16
+    paused = 8
 
 class StatusFlags(enum.Flag):
     holding = 128
@@ -194,6 +195,7 @@ class StateSequence():
         self.done = False
 
         self.rooms = set()
+        self.control_flags = ControlFlags(0)
         self.collection_flags = CollectionFlags(0)
         self.state_change_flags = StateChangeFlags(0)
 
@@ -208,6 +210,7 @@ class StateSequence():
     def _add_state(self, state):
         self.states.append(state)
         self.rooms.add(state.room)
+        self.control_flags |= state.control_flags
         self.collection_flags |= state.collection_flags
         self.state_change_flags |= state.state_change_flags
 

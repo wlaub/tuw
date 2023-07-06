@@ -72,7 +72,7 @@ An unsigned short giving the total length of the remained of the packet (not inc
 | ylift | float(4) | 24 |  |
 | state | signed int (4) | 28 | The player state ([see source for translation](https://github.com/NoelFB/Celeste/blob/master/Source/Player/Player.cs#L140)) |
 | dashes | signed int (4) | 32 | The number of dashes the player currently has |
-| control flags | unsigned byte | 36 | dead, control, cutscene, transition, 0, 0, 0, 0 |
+| control flags | unsigned byte | 36 | dead, control, cutscene, transition, paused, 0, 0, 0 |
 | status flags | unsigned byte | 37 | holding, crouched, facing_left, wall_left, wall_right, coyote, safe_ground, ground |
 
 ### Input State (10 bytes)
