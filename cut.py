@@ -55,7 +55,31 @@ class ClipRun(tuw.StateSequence):
 
     def get_segments(self):
         result = []
-        return [(self.states[0].timestamp,self.states[-1].timestamp)]
+
+        #this sure is a hideous way of removing paused segments
+        #that aren't part of the beginning or end of a run
+        paused = self.states[0].control_flags.value&8
+        left = self.states[0]
+        for state in self.states[1:]:
+            tpaused = state.control_flags.value&8
+            if tpaused and not paused: #pause
+                result.append([left, state])
+            if not tpaused and paused: #unpause
+                left = state
+            paused = tpaused
+
+        if len(result) > 0:
+            if result[-1][0] == left:
+                result[-1][1] = self.states[-1]
+            else:
+                result.append([left, self.states[-1]])
+        else:
+            return [(self.states[0].timestamp,self.states[-1].timestamp)]
+
+        result = [(a.timestamp, b.timestamp) for a,b in result]
+        return result
+
+
 
 
 runs = states.extract_sequences(ClipRun)

@@ -17,8 +17,8 @@ print(states.rooms)
 runs = states.extract_sequences(tuw.Run)
 print(f'{len(runs)} total runs')
 
-for run in runs:
-    print(run.control_flags)
+#for run in runs:
+#    print(run.control_flags)
 
 if len(sys.argv) == 2: exit()
 room = sys.argv[2]
