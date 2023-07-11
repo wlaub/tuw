@@ -10,7 +10,22 @@ import tuw.clusters
 
 infile = sys.argv[1]
 video_file = sys.argv[2]
-video_start_time = float(sys.argv[3])
+
+try:
+    video_start_time = float(sys.argv[3])
+except:
+    base = os.path.dirname(video_file)
+    stamp_file = os.path.join(base, 'recording_data.txt')
+    with open(stamp_file, 'r') as fp:
+        raw = fp.read()
+    for line in raw.split():
+        vidname, event, stamp = [x.strip('"') for x in line.split(',')]
+        if event != 'start': continue
+        if os.path.basename(vidname) == os.path.basename(video_file):
+            video_start_time = float(stamp)
+            break
+    else:
+        raise RuntimeError(f"Couldn't find start event for {video_file} in {stamp_file}")
 
 start_time = time.time()
 states = tuw.StateDump(infile)
