@@ -182,7 +182,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
         //7  clutter switch
         //6  text box
-        //5  
+        //5  player spawn
         //4  flag_change;
         //3  fake_wall; //not implemented, can't find a place to hook
         //2  cutscene;
@@ -332,6 +332,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
             Everest.Events.Level.OnExit += on_exit_hook;
             On.Monocle.Engine.Update += Update;
 
+            Everest.Events.Player.OnSpawn += on_spawn_hook;
 
             //Transients
             //Collection
@@ -359,6 +360,10 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
         public override void Unload() {
             On.Monocle.Engine.Update -= Update;
+            Everest.Events.Level.OnEnter -= on_enter_hook;
+            Everest.Events.Level.OnExit -= on_exit_hook;
+
+            Everest.Events.Player.OnSpawn -= on_spawn_hook;
 
             //Transients
             On.Celeste.Leader.GainFollower -= gain_follower_hook;
@@ -374,6 +379,11 @@ namespace Celeste.Mod.TheUltimateWednesday {
             On.Celeste.Session.SetFlag -= flag_hook;
             On.Celeste.MiniTextboxTrigger.Trigger -= text_hook;
 
+        }
+
+        public void on_spawn_hook(Player player)
+        {
+            trans_state.state_flags |= 0x01<<5;
         }
 
         public void gain_follower_hook(On.Celeste.Leader.orig_GainFollower orig, Leader self, Follower follower)

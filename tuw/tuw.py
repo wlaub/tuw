@@ -48,7 +48,7 @@ class CollectionFlags(enum.Flag):
 class StateChangeFlags(enum.Flag):
     clutter_switch = 128
     textbox = 64
-    event = 32
+    spawn = 32
     flag = 16
     fake_wall = 8
     cutscene = 4

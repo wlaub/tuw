@@ -118,24 +118,29 @@ class Plotter():
             if tuw.ControlFlags.dead in x.control_flags:
                 self._rect(10, rect, (255,0,0,128))
 
+            if tuw.StateChangeFlags.spawn in x.state_change_flags:
+                self._rect(21, rect, (0,0,255,255))
 
             if x.state == tuw.PlayerState.dash:
                 self._circle(5, rect, 3, (0,255,0,8))
             elif x.state == tuw.PlayerState.dream_dash:
                 self._circle(5, rect, 3, (255,255,255,4))
             elif x.state == tuw.PlayerState.red_dash:
-                self._circle(-10, rect, 8, (200,0,0,32))
+                self._circle(-10, rect, 8, (200,0,0,16))
             elif x.state == tuw.PlayerState.boost:
-                self._circle(-11, rect, 8, (0,128,32,32))
+                self._circle(-11, rect, 8, (0,128,32,16))
             elif x.state == tuw.PlayerState.star_fly:
-                self._circle(-11, rect, 6, (255,255,0,32))
+                self._circle(5, rect, 63, (255,255,0,16))
+            elif x.state == tuw.PlayerState.swim:
+                self._circle(-11, rect, 8, (0,128,255,16))
+
 
 
 
 
         for state in self.spawn_points:
             rect = self._state_box(state)
-            self._rect(20, rect, (0,0,255,255))
+            self._rect(20, rect, (255,0,255,255))
 
 
         final = self.new_image()
