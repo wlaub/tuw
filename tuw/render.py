@@ -81,38 +81,70 @@ class Plotter():
 
         self.normalize()
 
+    def _rect(self, layer, rect, color):
+        im = Image.new('RGBA',
+            (int(rect[2]), int(rect[3])),
+            color = color
+            )
+        self.images[layer].alpha_composite(im,
+            dest = (int(rect[0]), int(rect[1]))
+            )
+
+    def _circle(self, layer, pos, radius, color):
+        if len(pos) == 2:
+            xpos, ypos = pos
+        else:
+            xpos = pos[0]+pos[2]/2
+            ypos = pos[1]+pos[3]/2
+
+        im = Image.new('RGBA',
+            (int(xpos+2*radius), int(ypos+2*radius)),
+            color = (0,0,0,0)
+            )
+        draw = ImageDraw.Draw(im)
+        draw.ellipse((0,0,int(radius*2), int(radius*2)), fill=color)
+        self.images[layer].alpha_composite(im,
+            dest = (int(xpos-radius), int(ypos-radius))
+            )
+
+
     def render(self, filename, show=False):
 
         for x in self.states:
             rect = self._state_box(x)
-            rect = list(map(int, rect))
-            im = Image.new('RGBA', rect[2:],
-                color=(0,0,0,16))
-            self.images[0].alpha_composite(im, dest=tuple(rect[:2]))
 
+            self._rect(0, rect, (0,0,0,16))
 
             if tuw.ControlFlags.dead in x.control_flags:
-                im = Image.new('RGBA', rect[2:],
-                    color=(255,0,0,128))
-                self.images[1].alpha_composite(im, dest=tuple(rect[:2]))
+                self._rect(10, rect, (255,0,0,128))
+
+
+            if x.state == tuw.PlayerState.dash:
+                self._circle(5, rect, 3, (0,255,0,8))
+            elif x.state == tuw.PlayerState.dream_dash:
+                self._circle(5, rect, 3, (255,255,255,4))
+            elif x.state == tuw.PlayerState.red_dash:
+                self._circle(-10, rect, 8, (200,0,0,32))
+            elif x.state == tuw.PlayerState.boost:
+                self._circle(-11, rect, 8, (0,128,32,32))
+            elif x.state == tuw.PlayerState.star_fly:
+                self._circle(-11, rect, 6, (255,255,0,32))
+
+
+
 
         for state in self.spawn_points:
-           rect = self._state_box(x)
-           rect = list(map(int, rect))
-           im = Image.new('RGBA', rect[2:],
-                color=(0,0,255,255))
-           self.images[2].alpha_composite(im, dest=tuple(rect[:2]))
-
-
+            rect = self._state_box(state)
+            self._rect(20, rect, (0,0,255,255))
 
 
         final = self.new_image()
         for layer, im in sorted(self.images.items()):
             final.alpha_composite(im)
 
+        final.save(filename, 'png')
         if show:
             final.show()
-        final.save(filename, 'png')
 
 
 
