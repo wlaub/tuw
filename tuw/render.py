@@ -134,10 +134,6 @@ class Plotter():
             elif x.state == tuw.PlayerState.swim:
                 self._circle(-11, rect, 8, (0,128,255,16))
 
-
-
-
-
         for state in self.spawn_points:
             rect = self._state_box(state)
             self._rect(20, rect, (255,0,255,255))

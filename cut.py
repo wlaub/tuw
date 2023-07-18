@@ -11,6 +11,12 @@ import tuw.clusters
 infile = sys.argv[1]
 video_file = sys.argv[2]
 
+if len(sys.argv) > 2:
+    output_file = sys.argv[3]
+else:
+    output_file = 'output.mp4'
+
+
 try:
     video_start_time = float(sys.argv[3])
 except:
@@ -134,7 +140,7 @@ for idx, run in enumerate(runs):
     if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
         counts['room change'] += 1
         include = True
-    elif run.state_change_flags.value & 0xef:
+    elif run.state_change_flags.value & 0xcf:
         counts['state change'] += 1
 #        print(run.state_change_flags)
         include = True
@@ -167,7 +173,7 @@ for key, val in counts.items():
     print(f'{key}: {val} runs')
 
 
-print(len(export_runs))
+print(f'{len(export_runs)=}')
 
 base = moviepy.editor.VideoFileClip(video_file)
 clips = []
@@ -191,8 +197,8 @@ for run in export_runs:
         clips.append(clip)
 
 
-print(len(clips))
+print(f'{len(clips)=})')
 
 out_clip = moviepy.editor.concatenate_videoclips(clips)
-out_clip.write_videofile('output.mp4')
+out_clip.write_videofile(output_file)
 
