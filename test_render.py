@@ -30,8 +30,8 @@ def _filter(x):
     return room is True or x.room == room
 
 for run in runs:
-#    if not tuw.ControlFlags.paused in run.control_flags:
-#        continue
+    if not tuw.ControlFlags.paused in run.control_flags:
+        continue
     if room is True or room in run.rooms:
         plotter.add_run(run, _filter)
 

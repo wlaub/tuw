@@ -8,39 +8,34 @@ import moviepy.editor
 import tuw
 import tuw.clusters
 
-infile = sys.argv[1]
-video_file = sys.argv[2]
-
-if len(sys.argv) > 2:
-    output_file = sys.argv[3]
-else:
-    output_file = 'output.mp4'
-
-
-try:
-    video_start_time = float(sys.argv[3])
-except:
-    base = os.path.dirname(video_file)
-    stamp_file = os.path.join(base, 'recording_data.txt')
-    with open(stamp_file, 'r') as fp:
-        raw = fp.read()
-    for line in raw.split():
-        vidname, event, stamp = [x.strip('"') for x in line.split(',')]
-        if event != 'start': continue
-        if os.path.basename(vidname) == os.path.basename(video_file):
-            video_start_time = float(stamp)
-            break
+infiles = []
+output_file = 'output.mp4'
+for name in sys.argv[1:]:
+    if 'mp4' in name:
+        output_file = name
+    elif 'dump' in name:
+        infiles.append(name)
     else:
-        raise RuntimeError(f"Couldn't find start event for {video_file} in {stamp_file}")
+        print(f"Warning: can't handle input file {name}")
 
-start_time = time.time()
-states = tuw.StateDump(infile)
-end_time = time.time()
+base = os.path.expanduser('~/Videos/Streams')
+stamp_file = os.path.join(base, 'recording_data.txt')
+video_index = defaultdict(dict)
+with open(stamp_file, 'r') as fp:
+    raw = fp.read()
+for line in raw.split():
+    vidname, event, stamp = [x.strip('"') for x in line.split(',')]
+    video_index[vidname][event] = float(stamp)
 
-print(f'{len(states.states)} states loaded in {end_time-start_time:.2f} s')
-print(states.map)
-print(states.chapter)
-print(states.rooms)
+
+def get_clip_info(video_index, start, end):
+    #TODO: handle corner cases where a run spans 2 videos
+    #or extends past the edge of a video
+    for vidname, events in video_index.items():
+        if events['start'] <= start and events['stop'] >= end:
+            return vidname, events['start']
+    raise RuntimeError(f"Couldn't find video matching stamps {start}, {end}")
+
 
 class ClipRun(tuw.StateSequence):
     """
@@ -101,90 +96,106 @@ class ClipRun(tuw.StateSequence):
         return result
 
 
-
-
-runs = states.extract_sequences(ClipRun)
-print(f'{len(runs)} total runs')
-
-
-cluster_runs = []
-longest_fails = []
-
-room_map = defaultdict(list)
-for run in runs:
-    for room in run.rooms:
-        room_map[room].append(run)
-
-for room, room_runs in room_map.items():
-    try:
-        grp = tuw.clusters.GroupClusters(room_runs)
-        count = len(grp.labels_by_size)
-        N = int(count/6)
-        cluster_runs.extend(grp.get_best_runs(N, lambda x:x.run.states[0].sequence))
-    except Exception as e:
-        print(f'Failed to cluster on {room}: {e}')
-
-    sub_runs = list(filter(lambda x: len(x.rooms) == 1, room_runs))
-    if len(sub_runs) >= 10:
-        longest = max(sub_runs, key= lambda x: x.get_length())
-        longest_fails.append(longest)
-
-
-counts = defaultdict(lambda:0)
-
 export_runs = []
-for idx, run in enumerate(runs):
-#    print(run.states[0].sequence, run.states[-1].sequence)
-    include = False
-#    if idx in [6]: include = True
-    if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
-        counts['room change'] += 1
-        include = True
-    elif run.state_change_flags.value & 0xcf:
-        counts['state change'] += 1
-#        print(run.state_change_flags)
-        include = True
-    elif run.collection_flags.value & 0x7f:
-        counts['collection'] += 1
-#        print(run.collection_flags)
-        include = True
-    elif idx < len(runs)-1 and not run.match_spawn(runs[idx+1]):
-        counts['spawn change next'] += 1
-        include = True
-    elif idx > 0 and not run.match_spawn(runs[idx-1]) and not (run.state_change_flags.value&0x01 == 0):
-        counts['spawn change prev'] += 1
-        include = True
-    elif run in cluster_runs:
-        counts['clusters'] += 1
-#        print(f'{idx}: from cluster')
-        include = True
-    elif run in longest_fails:
-        counts['long fails'] += 1
-#        print(f'{idx}: from longest fails')
-        include = True
 
-    if run.states[0].deaths == 5831:
-        include = True
+for infile in infiles:
+    start_time = time.time()
+    states = tuw.StateDump(infile)
+    end_time = time.time()
 
-    if include:
-        export_runs.append(run)
+    print(f'{len(states.states)} states loaded in {end_time-start_time:.2f} s')
+    print(states.map)
+    print(states.chapter)
+    print(states.rooms)
 
-for key, val in counts.items():
-    print(f'{key}: {val} runs')
+    runs = states.extract_sequences(ClipRun)
+    print(f'{len(runs)} total runs')
 
 
-print(f'{len(export_runs)=}')
+    cluster_runs = []
+    longest_fails = []
 
-base = moviepy.editor.VideoFileClip(video_file)
+    room_map = defaultdict(list)
+    for run in runs:
+        for room in run.rooms:
+            room_map[room].append(run)
+
+    for room, room_runs in room_map.items():
+        try:
+            grp = tuw.clusters.GroupClusters(room_runs)
+            count = len(grp.labels_by_size)
+            N = int(count/6)
+            cluster_runs.extend(grp.get_best_runs(N, lambda x:x.run.states[0].sequence))
+        except Exception as e:
+            print(f'Failed to cluster on {room}: {e}')
+
+        sub_runs = list(filter(lambda x: len(x.rooms) == 1, room_runs))
+        if len(sub_runs) >= 10:
+            longest = max(sub_runs, key= lambda x: x.get_length())
+            longest_fails.append(longest)
+
+
+    counts = defaultdict(lambda:0)
+
+    for idx, run in enumerate(runs):
+    #    print(run.states[0].sequence, run.states[-1].sequence)
+        include = False
+    #    if idx in [6]: include = True
+        if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
+            counts['room change'] += 1
+            include = True
+        elif run.state_change_flags.value & 0xcf:
+            counts['state change'] += 1
+    #        print(run.state_change_flags)
+            include = True
+        elif run.collection_flags.value & 0x7f:
+            counts['collection'] += 1
+    #        print(run.collection_flags)
+            include = True
+        elif idx < len(runs)-1 and not run.match_spawn(runs[idx+1]):
+            counts['spawn change next'] += 1
+            include = True
+        elif idx > 0 and not run.match_spawn(runs[idx-1]) and not (run.state_change_flags.value&0x01 == 0):
+            counts['spawn change prev'] += 1
+            include = True
+        elif run in cluster_runs:
+            counts['clusters'] += 1
+    #        print(f'{idx}: from cluster')
+            include = True
+        elif run in longest_fails:
+            counts['long fails'] += 1
+    #        print(f'{idx}: from longest fails')
+            include = True
+
+        if run.states[0].deaths == 5831:
+            include = True
+
+        if include:
+            export_runs.append(run)
+
+    for key, val in counts.items():
+        print(f'{key}: {val} runs')
+
+
+    print(f'{len(export_runs)=}')
+
+source_video_map = {}
 clips = []
 for run in export_runs:
 
     for start, end in run.get_segments():
+        vidname, video_start_time = get_clip_info(video_index, start, end)
+
         start -= video_start_time
         end -= video_start_time
+
+        if not vidname in source_video_map.keys():
+            source_video_map[vidname] = moviepy.editor.VideoFileClip(vidname)
+
+        base = source_video_map[vidname]
+
         if end < 0: continue
         if start > base.duration: continue
-
 
         if start < 0:
             print(f'start clipped from {start} to 0')
