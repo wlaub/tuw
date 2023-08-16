@@ -184,7 +184,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
         //6  text box
         //5  player spawn
         //4  flag_change;
-        //3  fake_wall; //not implemented, can't find a place to hook
+        //3  do not load count increase
         //2  cutscene;
         //1  dash_block;
         //0  respawn change
@@ -270,6 +270,8 @@ namespace Celeste.Mod.TheUltimateWednesday {
         public static bool first_packet;
 
         public static Vector2? respawn = null;
+
+        public static int dnl_count = 0;
 
         public TheUltimateWednesdayModule() {
             Instance = this;
@@ -532,6 +534,14 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
             if(player_state_valid)
             {
+
+                Level level = Engine.Scene as Level;
+                if(level.Session.DoNotLoad.Count > dnl_count)
+                {
+                    trans_state.state_flags |= 0x01<<3;
+                }
+                dnl_count = level.Session.DoNotLoad.Count;
+
                 header_state.sequence = sequence;
                 sequence += 1;
                 byte[] header = header_state.to_bytes();
