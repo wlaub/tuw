@@ -195,6 +195,7 @@ class StateSequence():
         self.done = False
 
         self.rooms = set()
+        self.room_order = []
         self.control_flags = ControlFlags(0)
         self.collection_flags = CollectionFlags(0)
         self.state_change_flags = StateChangeFlags(0)
@@ -210,6 +211,8 @@ class StateSequence():
     def _add_state(self, state):
         self.states.append(state)
         self.rooms.add(state.room)
+        if len(self.room_order) == 0 or self.room_order[-1] != state.room:
+            self.room_order.append(state.room)
         self.control_flags |= state.control_flags
         self.collection_flags |= state.collection_flags
         self.state_change_flags |= state.state_change_flags
@@ -260,5 +263,21 @@ class Run(StateSequence):
             self.done = True
 
         self._add_state(state)
+
+class RoomRun(Run):
+
+    def add_state(self, state):
+        if len(self.rooms) > 0 and not state.room in self.rooms:
+            self.done = True
+        elif len(self.states) > 0 and self.states[-1].deaths != state.deaths:
+            self.done = True
+            self.control_flags |= ControlFlags.dead
+        else:
+            super().add_state(state)
+
+class RoomCompleteRun(RoomRun):
+
+    def valid(self):
+        return super().valid() and not ControlFlags.dead in self.control_flags
 
 

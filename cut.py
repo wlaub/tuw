@@ -5,6 +5,10 @@ from collections import defaultdict
 
 import moviepy.editor
 
+
+numbers = [413, 420, 612, 720, 1025, 1337, 1413, 1612, 1420, 2012, 2020, 2600, 7859]
+
+
 import tuw
 import tuw.clusters
 
@@ -136,46 +140,49 @@ for infile in infiles:
 
 
     counts = defaultdict(lambda:0)
+    if False:
+        for idx, run in enumerate(runs):
+            if run.states[0].deaths in (610,):
+                export_runs.append(run)
+    else:
+        for idx, run in enumerate(runs):
+        #    print(run.states[0].sequence, run.states[-1].sequence)
+            include = False
+        #    if idx in [6]: include = True
+            if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
+                counts['room change'] += 1
+                include = True
+            elif run.state_change_flags.value & 0xcf:
+                counts['state change'] += 1
+        #        print(run.state_change_flags)
+                include = True
+            elif run.collection_flags.value & 0x7f:
+                counts['collection'] += 1
+        #        print(run.collection_flags)
+                include = True
+            elif idx < len(runs)-1 and not run.match_spawn(runs[idx+1]):
+                counts['spawn change next'] += 1
+                include = True
+            elif idx > 0 and not run.match_spawn(runs[idx-1]) and not (run.state_change_flags.value&0x01 == 0):
+                counts['spawn change prev'] += 1
+                include = True
+            elif run in cluster_runs:
+                counts['clusters'] += 1
+        #        print(f'{idx}: from cluster')
+                include = True
+            elif run in longest_fails:
+                counts['long fails'] += 1
+        #        print(f'{idx}: from longest fails')
+                include = True
+            elif run.states[0].deaths in numbers:
+                include = True
+                counts['numbers'] += 1
 
-    for idx, run in enumerate(runs):
-    #    print(run.states[0].sequence, run.states[-1].sequence)
-        include = False
-    #    if idx in [6]: include = True
-        if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
-            counts['room change'] += 1
-            include = True
-        elif run.state_change_flags.value & 0xcf:
-            counts['state change'] += 1
-    #        print(run.state_change_flags)
-            include = True
-        elif run.collection_flags.value & 0x7f:
-            counts['collection'] += 1
-    #        print(run.collection_flags)
-            include = True
-        elif idx < len(runs)-1 and not run.match_spawn(runs[idx+1]):
-            counts['spawn change next'] += 1
-            include = True
-        elif idx > 0 and not run.match_spawn(runs[idx-1]) and not (run.state_change_flags.value&0x01 == 0):
-            counts['spawn change prev'] += 1
-            include = True
-        elif run in cluster_runs:
-            counts['clusters'] += 1
-    #        print(f'{idx}: from cluster')
-            include = True
-        elif run in longest_fails:
-            counts['long fails'] += 1
-    #        print(f'{idx}: from longest fails')
-            include = True
-
-        if run.states[0].deaths == 5831:
-            include = True
-
-        if include:
-            export_runs.append(run)
+            if include:
+                export_runs.append(run)
 
     for key, val in counts.items():
         print(f'{key}: {val} runs')
-
 
     print(f'{len(export_runs)=}')
 

@@ -25,7 +25,9 @@ class Bounds():
             self.top = ypos
 
     def expand(self, value):
-        self.left -= value
+        if self.left is None:
+            raise ValueError('Never initialized')
+        self.left -=  value
         self.right += value
         self.top += value
         self.bottom -= value
@@ -66,12 +68,15 @@ class Plotter():
         self.bounds.update(state.xpos, state.ypos)
 
     def normalize(self):
-        for state in self.states:
-            state.xpos -= self.bounds.left
-            state.ypos -= self.bounds.bottom
+        xoff = int(self.bounds.left/16)*16
+        yoff = int(self.bounds.bottom/16)*16
 
-        self.bounds.right -= self.bounds.left
-        self.bounds.top -= self.bounds.bottom
+        for state in self.states:
+            state.xpos -= xoff
+            state.ypos -= yoff
+
+        self.bounds.right -= xoff
+        self.bounds.top -= yoff
         self.bounds.left = 0
         self.bounds.bottom = 0
 
@@ -107,11 +112,31 @@ class Plotter():
             dest = (int(xpos-radius), int(ypos-radius))
             )
 
+    def _lines(self, layer, points, color, width):
+        im = self.new_image()
+        draw = ImageDraw.Draw(im)
+        draw.line(points, fill=color, width = width)
+        self.images[layer].alpha_composite(im,
+            dest = (0,0)
+            )
+
+
 
     def render(self, filename, show=False):
 
+        line_sets = []
+        line_points = []
+        prev_deaths = 0
         for x in self.states:
             rect = self._state_box(x)
+
+            center = (rect[0] + rect[2]/2, rect[1]+rect[3]/2)
+
+            if prev_deaths != x.deaths:
+                line_sets.append(line_points)
+                line_points = []
+            prev_deaths = x.deaths
+            line_points.append(center)
 
             self._rect(0, rect, (0,0,0,16))
 
@@ -133,6 +158,13 @@ class Plotter():
                 self._circle(5, rect, 63, (255,255,0,16))
             elif x.state == tuw.PlayerState.swim:
                 self._circle(-11, rect, 8, (0,128,255,16))
+
+        if line_sets[-1] != line_points:
+            line_sets.append(line_points)
+
+
+        for lines in line_sets:
+            self._lines(30, lines, (255,255,255), 2)
 
         for state in self.spawn_points:
             rect = self._state_box(state)

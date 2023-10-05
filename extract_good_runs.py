@@ -1,5 +1,6 @@
 import sys, os
 import time
+from collections import defaultdict
 
 import tuw
 from tuw import render
@@ -14,7 +15,8 @@ print(states.map)
 print(states.chapter)
 print(states.rooms)
 
-runs = states.extract_sequences(tuw.Run)
+runs = states.extract_sequences(tuw.RoomCompleteRun)
+
 print(f'{len(runs)} total runs')
 
 #for run in runs:
@@ -29,13 +31,27 @@ plotter = render.Plotter()
 def _filter(x):
     return room is True or x.room == room
 
+numbers = [211, 212]
+
+#room_map = defaultdict(list)
+for run in runs:
+    deaths = set()
+    for state in run.states:
+        deaths.add(state.deaths)
+    print(f'{run.rooms}: {deaths}')
 
 for run in runs:
 #    if not tuw.ControlFlags.paused in run.control_flags:
 #        continue
-    if not tuw.CollectionFlags.key in run.collection_flags:
+#    if not tuw.CollectionFlags.key in run.collection_flags:
+#        continue
+    if tuw.ControlFlags.dead in run.control_flags:
+        continue
+    if not room in run.rooms:
         continue
 
+    print(run.room_order)
+    print(run.states[0].deaths)
 #    include = False
 #    for state in run.states:
 #        if state.ypos < -3050:
