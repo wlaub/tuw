@@ -17,6 +17,12 @@ output_file = 'output.mp4'
 for name in sys.argv[1:]:
     if 'mp4' in name:
         output_file = name
+    elif '.txt' in name:
+        with open(name, 'r') as fp:
+            for line in fp.read().split('\n'):
+                line = line.strip()
+                if line != '' and line[0] != '#':
+                    infiles.append(line)
     elif 'dump' in name:
         infiles.append(name)
     else:
@@ -57,7 +63,9 @@ class ClipRun(tuw.StateSequence):
     def add_state(self, state):
         if self.done: return
 
-        if tuw.ControlFlags.dead in state.control_flags:
+        if (tuw.ControlFlags.dead in state.control_flags
+            or (len(self.states) > 0 and state.deaths != self.states[-1].deaths)
+                ):
             self.ending = True
             if len(self.states) == 0:
                 self.done = True
@@ -142,13 +150,11 @@ for infile in infiles:
     counts = defaultdict(lambda:0)
     if False:
         for idx, run in enumerate(runs):
-            if run.states[0].deaths in (610,):
+            if run.states[0].deaths in (20,):
                 export_runs.append(run)
     else:
         for idx, run in enumerate(runs):
-        #    print(run.states[0].sequence, run.states[-1].sequence)
             include = False
-        #    if idx in [6]: include = True
             if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
                 counts['room change'] += 1
                 include = True
@@ -188,6 +194,7 @@ for infile in infiles:
 
 source_video_map = {}
 clips = []
+segments = []
 for run in export_runs:
 
     for start, end in run.get_segments():
@@ -211,8 +218,11 @@ for run in export_runs:
             print(f'end clipped from {end} to {base.duration}')
             end = base.duration
 
-        clip = base.subclip(start, end)
-        clips.append(clip)
+        segments.append((start, end, base))
+
+for start, end, base in segments:
+    clip = base.subclip(start, end)
+    clips.append(clip)
 
 
 print(f'{len(clips)=})')

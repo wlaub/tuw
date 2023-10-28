@@ -332,6 +332,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
         public override void Load() {
             Everest.Events.Level.OnEnter += on_enter_hook;
             Everest.Events.Level.OnExit += on_exit_hook;
+            Everest.Events.LevelLoader.OnLoadingThread += on_loading_thread;
             On.Monocle.Engine.Update += Update;
 
             Everest.Events.Player.OnSpawn += on_spawn_hook;
@@ -364,6 +365,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
             On.Monocle.Engine.Update -= Update;
             Everest.Events.Level.OnEnter -= on_enter_hook;
             Everest.Events.Level.OnExit -= on_exit_hook;
+            Everest.Events.LevelLoader.OnLoadingThread -= on_loading_thread;
 
             Everest.Events.Player.OnSpawn -= on_spawn_hook;
 
@@ -471,8 +473,19 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
         }
 
+        private void on_loading_thread(Level level)
+        {
+            Session session = level.Session;
+            on_enter_hook(session, false);
+        }
+
         private void on_enter_hook(Session session, bool fromSaveData)
         {
+            if(in_level)
+            {
+                return;
+            }
+
             in_level = true;
             map_name = make_string_more_better(session.Area.SID);
 
@@ -522,6 +535,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
         {
             in_level = false;
             close_dump_file();
+
         }
 
         public static void Update(On.Monocle.Engine.orig_Update orig, Engine self, GameTime gameTime)

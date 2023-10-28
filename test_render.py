@@ -14,7 +14,7 @@ print(states.map)
 print(states.chapter)
 print(states.rooms)
 
-runs = states.extract_sequences(tuw.Run)
+runs = states.extract_sequences(tuw.RoomRun)
 print(f'{len(runs)} total runs')
 
 #for run in runs:
@@ -35,6 +35,7 @@ for run in runs:
 #        continue
     if not tuw.CollectionFlags.key in run.collection_flags:
         continue
+#    if run.states[0].deaths < 1160: continue
 
 #    include = False
 #    for state in run.states:
@@ -44,6 +45,7 @@ for run in runs:
 #        continue
 
     if room is True or room in run.rooms:
+        print(run.states[0].deaths)
         plotter.add_run(run, _filter)
 
 plotter.finalize()
