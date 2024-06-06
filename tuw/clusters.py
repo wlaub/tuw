@@ -39,8 +39,10 @@ class GroupClusters:
             stats.ingest_cluster(self.clst)
 
         self.stats_map = defaultdict(list)
+        self.run_map = {}
         for stats in self.run_stats:
             self.stats_map[stats.label].append(stats)
+            self.run_map[stats.run] = stats.label
 
         #labels by size
         label_map = defaultdict(list)
@@ -50,6 +52,9 @@ class GroupClusters:
         label_map.pop(-1, None)
 
         self.labels_by_size = sorted(label_map.items(), key=lambda x: len(x[1]), reverse=True)
+
+    def get_run_cluster(self, run):
+        return self.run_map[run]
 
     def get_best_runs(self, n, metric = lambda x: x.dist):
         #runs closest to each cluster centroid
