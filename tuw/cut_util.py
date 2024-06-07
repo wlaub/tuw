@@ -1,5 +1,8 @@
+import os
 import time
 from collections import defaultdict
+
+import moviepy.editor
 
 import tuw
 import tuw.clusters
@@ -122,28 +125,29 @@ class CutInput:
         extant_clusters = set()
 
         counts = defaultdict(lambda:0)
+        unique_counts = defaultdict(lambda:0)
         for idx, run in enumerate(runs):
             conditions = set()
             cluster = self.cluster_map.get(run, None)
             if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
                 conditions.add('room_change')
-            elif run.state_change_flags.value & state_change:
+            if run.state_change_flags.value & state_change:
                 conditions.add('state change')
         #        print(run.state_change_flags)
-            elif run.collection_flags.value & collection:
+            if run.collection_flags.value & collection:
                 conditions.add('collection')
         #        print(run.collection_flags)
-            elif idx < len(runs)-1 and not run.match_spawn(runs[idx+1]):
+            if idx < len(runs)-1 and not run.match_spawn(runs[idx+1]):
                 conditions.add('spawn change next')
-            elif idx > 0 and not run.match_spawn(runs[idx-1]) and not (run.state_change_flags.value&0x01 == 0):
+            if idx > 0 and not run.match_spawn(runs[idx-1]) and not (run.state_change_flags.value&0x01 == 0):
                 conditions.add('spawn change prev')
-            elif run in self.cluster_runs and False:
+            if run in self.cluster_runs and False:
                 conditions.add('cluster')
         #        print(f'{idx}: from cluster')
-            elif run in self.longest_fails:
+            if run in self.longest_fails:
                 conditions.add('long fail')
         #        print(f'{idx}: from longest fails')
-            elif run.states[0].deaths in numbers:
+            if run.states[0].deaths in numbers:
                 conditions.add('numbers')
 
             if len(conditions) > 0:
@@ -151,7 +155,11 @@ class CutInput:
                 export_conditions.append(conditions)
                 for cond in conditions:
                     counts[cond] += 1
+                if len(conditions) == 1:
+                    unique_counts[list(conditions)[0]] += 1
                 export_runs.append((idx, run))
+                if run in self.cluster_runs and not 'cluster' in conditions:
+                    counts['cluster'] += 1
 
         for idx, run in enumerate(runs):
             conditions = set()
@@ -165,6 +173,8 @@ class CutInput:
                 export_conditions.append(conditions)
                 for cond in conditions:
                     counts[cond] += 1
+                if len(conditions) == 1:
+                    unique_counts[list(conditions)[0]] += 1
                 export_runs.append((idx, run))
 
         export_runs = sorted(export_runs, key=lambda x: x[0])
@@ -175,4 +185,80 @@ class CutInput:
 
 #        print(f'{len(export_runs)=}')
 
-        return export_runs, export_conditions, counts
+        return export_runs, export_conditions, counts, unique_counts
+
+
+
+class Clipper:
+
+    def __init__(self, stamp_file_path):
+        self.stamp_file_path = os.path.expanduser(stamp_file_path)
+
+        self.stamp_file = stamp_file = os.path.join(self.stamp_file_path, 'recording_data.txt')
+        self.video_index = video_index = defaultdict(dict)
+        with open(stamp_file, 'r') as fp:
+            raw = fp.read()
+        for line in raw.split():
+            vidname, event, stamp = [x.strip('"') for x in line.split(',')]
+            video_index[vidname][event] = float(stamp)
+
+    def get_clip_info(self, start, end):
+        #TODO: handle corner cases where a run spans 2 videos
+        #or extends past the edge of a video
+        for vidname, events in self.video_index.items():
+            if events['start'] <= start and events['stop'] >= end:
+                return vidname, events['start']
+        raise RuntimeError(f"Couldn't find video matching stamps {start}, {end}")
+
+    def compute_clips(self, export_runs):
+        self.source_video_map = source_video_map = {}
+        segments = []
+        for run in export_runs:
+
+            for start, end in run.get_segments():
+                vidname, video_start_time = self.get_clip_info(start, end)
+
+                start -= video_start_time
+                end -= video_start_time
+
+                if not vidname in source_video_map.keys():
+                    source_video_map[vidname] = moviepy.editor.VideoFileClip(vidname)
+
+                base = source_video_map[vidname]
+
+                if end < 0: continue
+                if start > base.duration: continue
+
+                if start < 0:
+                    print(f'start clipped from {start} to 0')
+                    start = 0
+                if end > base.duration:
+                    print(f'end clipped from {end} to {base.duration}')
+                    end = base.duration
+
+                segments.append((start, end, base))
+
+        return segments
+
+    def get_full_output_file(self, output_file):
+        output_file = os.path.expanduser(output_file)
+        if output_file[0] != '/':
+            output_file = os.path.join(self.stamp_file_path, output_file)
+        return output_file
+
+    def export_moviepy(self, segments, output_file):
+
+        output_file = self.get_full_output_file(output_file)
+
+        clips = []
+        for start, end, base in segments:
+            clip = base.subclip(start, end)
+            clips.append(clip)
+
+        print(f'{len(clips)=})')
+
+        out_clip = moviepy.editor.concatenate_videoclips(clips)
+        out_clip.write_videofile(output_file)
+
+
+

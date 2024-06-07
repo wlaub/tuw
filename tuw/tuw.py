@@ -37,7 +37,7 @@ class DirectionFlags(enum.Flag):
 
 class CollectionFlags(enum.Flag):
     follower = 128
-
+    UNUSED = 64
     heart = 32
     tape = 16
     key_lost = 8

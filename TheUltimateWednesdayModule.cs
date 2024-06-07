@@ -385,61 +385,32 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
         }
 
-        public void on_spawn_hook(Player player)
-        {
-            trans_state.state_flags |= 0x01<<5;
-        }
-
-        public void gain_follower_hook(On.Celeste.Leader.orig_GainFollower orig, Leader self, Follower follower)
-        {
-            orig(self, follower);
-            trans_state.collection_flags |= 0x01<<7;
-        }
-
-        public void seeds_hook(On.Celeste.StrawberrySeed.orig_OnAllCollected orig, StrawberrySeed self)
-        {
-            trans_state.collection_flags |= 0x01<<1;
-            orig(self);
-        }
-        public void berry_hook(On.Celeste.Strawberry.orig_OnCollect orig, Strawberry self)
-        {
-            trans_state.collection_flags |= 0x01;
-            orig(self);
-        }
-        public void key_hook(On.Celeste.Key.orig_OnPlayer orig, Key self, Player player)
-        {
-            trans_state.collection_flags |= 0x01<<2;
-            orig(self, player);
-        }
-        public void tape_hook(On.Celeste.Cassette.orig_OnPlayer orig, Cassette self, Player player)
-        {
-            trans_state.collection_flags |= 0x01<<4;
-            orig(self, player);
-        }
-        public void clutter_switch_hook(On.Celeste.ClutterSwitch.orig_BePressed orig, ClutterSwitch self)
-        {
-            trans_state.state_flags |= 0x01<<7;
-            orig(self);
-        }
+        //
+        // State flag hooks
+        //
+        // bit 0 in update_player_state
         public void dash_block_hook(On.Celeste.DashBlock.orig_RemoveAndFlagAsGone orig, DashBlock self)
         {
             trans_state.state_flags |= 0x01<<1;
-            orig(self);
-        }
-        public void heart_hook(On.Celeste.HeartGem.orig_Collect orig, HeartGem self, Player player)
-        {
-            trans_state.collection_flags |= 0x01<<5;
-            orig(self, player);
-        }
-        public void door_hook(On.Celeste.Key.orig_RegisterUsed orig, Key self)
-        {
-            trans_state.collection_flags |= 0x01<<3;
             orig(self);
         }
         public void cutscene_hook(On.Celeste.CutsceneEntity.orig_Start orig, CutsceneEntity self)
         {
             trans_state.state_flags |= 0x01<<2;
             orig(self);
+        }
+        //bit 3 in Update
+        public void flag_hook(On.Celeste.Session.orig_SetFlag orig, Session self, string flag, bool set_to)
+        {
+            if(self.GetFlag(flag) != set_to)
+            {
+                trans_state.state_flags |= 0x01<<4;
+            }
+            orig(self, flag, set_to);
+        }
+        public void on_spawn_hook(Player player)
+        {
+            trans_state.state_flags |= 0x01<<5;
         }
         public void text_hook(On.Celeste.MiniTextboxTrigger.orig_Trigger orig, MiniTextboxTrigger self)
         {
@@ -452,15 +423,52 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 trans_state.state_flags |= 0x01<<6;
             }
         }
-
-        public void flag_hook(On.Celeste.Session.orig_SetFlag orig, Session self, string flag, bool set_to)
+        public void clutter_switch_hook(On.Celeste.ClutterSwitch.orig_BePressed orig, ClutterSwitch self)
         {
-            if(self.GetFlag(flag) != set_to)
-            {
-                trans_state.state_flags |= 0x01<<4;
-            }
-            orig(self, flag, set_to);
+            trans_state.state_flags |= 0x01<<7;
+            orig(self);
         }
+
+        //
+        // Collection flag hooks
+        //
+ 
+        public void berry_hook(On.Celeste.Strawberry.orig_OnCollect orig, Strawberry self)
+        {
+            trans_state.collection_flags |= 0x01;
+            orig(self);
+        }
+        public void seeds_hook(On.Celeste.StrawberrySeed.orig_OnAllCollected orig, StrawberrySeed self)
+        {
+            trans_state.collection_flags |= 0x01<<1;
+            orig(self);
+        }
+        public void key_hook(On.Celeste.Key.orig_OnPlayer orig, Key self, Player player)
+        {
+            trans_state.collection_flags |= 0x01<<2;
+            orig(self, player);
+        }
+        public void door_hook(On.Celeste.Key.orig_RegisterUsed orig, Key self)
+        {
+            trans_state.collection_flags |= 0x01<<3;
+            orig(self);
+        }
+        public void tape_hook(On.Celeste.Cassette.orig_OnPlayer orig, Cassette self, Player player)
+        {
+            trans_state.collection_flags |= 0x01<<4;
+            orig(self, player);
+        }
+        public void heart_hook(On.Celeste.HeartGem.orig_Collect orig, HeartGem self, Player player)
+        {
+            trans_state.collection_flags |= 0x01<<5;
+            orig(self, player);
+        }
+        public void gain_follower_hook(On.Celeste.Leader.orig_GainFollower orig, Leader self, Follower follower)
+        {
+            orig(self, follower);
+            trans_state.collection_flags |= 0x01<<7;
+        }
+
 
         public string make_string_more_better(string input)
         {

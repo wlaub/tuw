@@ -54,7 +54,7 @@ export_conditions = []
 counts = defaultdict(lambda:0)
 
 for cut_input in inputs:
-    _runs, _conds, _counts = cut_input.extract_runs(**extract_config)
+    _runs, _conds, _counts, _ = cut_input.extract_runs(**extract_config)
     for key, val in _counts.items():
         counts[key] += val
 
@@ -71,6 +71,12 @@ print(f'{len(export_runs)=}')
 ####
 # Generate video
 ####
+
+clipper = tuw.cut_util.Clipper('~/Videos/Streams')
+segments = clipper.compute_clips(export_runs)
+clipper.export_moviepy(segments, output_file)
+
+exit(0)
 
 base = os.path.expanduser('~/Videos/Streams')
 stamp_file = os.path.join(base, 'recording_data.txt')
