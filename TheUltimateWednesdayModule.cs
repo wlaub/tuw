@@ -402,9 +402,15 @@ namespace Celeste.Mod.TheUltimateWednesday {
         //bit 3 in Update
         public void flag_hook(On.Celeste.Session.orig_SetFlag orig, Session self, string flag, bool set_to)
         {
-            if(self.GetFlag(flag) != set_to)
+            bool old_value = self.GetFlag(flag);
+            if(old_value != set_to)
             {
-                trans_state.state_flags |= 0x01<<4;
+//Logger.Log(LogLevel.Info, "tuw", $"Flag change {flag} from {old_value} to {set_to}");
+                //TODO: some kind of transient packet giving the flag name and state
+                if(flag!= "VivHelper/IsPlayerAlive")
+                {
+                    trans_state.state_flags |= 0x01<<4;
+                }
             }
             orig(self, flag, set_to);
         }
