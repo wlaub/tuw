@@ -1,5 +1,6 @@
 import os
 import time
+import subprocess
 from collections import defaultdict
 
 import moviepy.editor
@@ -236,7 +237,7 @@ class Clipper:
                     print(f'end clipped from {end} to {base.duration}')
                     end = base.duration
 
-                segments.append((start, end, base))
+                segments.append((start, end, base, vidname))
 
         return segments
 
@@ -247,11 +248,10 @@ class Clipper:
         return output_file
 
     def export_moviepy(self, segments, output_file):
-
         output_file = self.get_full_output_file(output_file)
 
         clips = []
-        for start, end, base in segments:
+        for start, end, base, _ in segments:
             clip = base.subclip(start, end)
             clips.append(clip)
 
@@ -260,5 +260,22 @@ class Clipper:
         out_clip = moviepy.editor.concatenate_videoclips(clips)
         out_clip.write_videofile(output_file)
 
+    def export_gpu(self, segments, output_file):
+        output_file = self.get_full_output_file(output_file)
 
+        lines = []
+        for start, end, base, vidname in segments:
+            lines.append(f"file {vidname}")
+            lines.append(f'inpoint {start}')
+            lines.append(f'outpoint {end}')
+
+        file_list = '\n'.join(lines)
+
+        list_path = os.path.join(self.stamp_file_path, 'my_list.txt')
+        with open(list_path, 'w') as fp:
+            fp.write(file_list)
+
+        cmd = f'ffmpeg  -y -vsync 0 -hwaccel cuda -hwaccel_output_format cuda -safe 0 -c:v h264_cuvid -f concat -i {list_path} -c:v h264_nvenc -af aresample=async=1000 {output_file} -v quiet -stats'
+
+        result = subprocess.check_output(cmd, shell=True)
 

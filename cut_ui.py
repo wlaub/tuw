@@ -123,6 +123,7 @@ layout = [[
             layout=[
 [
 sg.Input(key = 'outfile',
+    default_text = "_.mp4",
     size = (40, 3),
     enable_events = True,
     ),
@@ -135,10 +136,14 @@ sg.Button('Go', key='do_cut', enable_events=True),
         result = sg.Column( expand_x = True,
             layout=[
 [
-sg.Button('Add files', key='add_files', enable_events=True),
+sg.Column(layout=[
+    [sg.Button('Add files', key='add_files', enable_events=True)],
+    [sg.Button('Sort', key='sort_files', enable_events=True)],
+]
+),
 DListbox(key = 'infiles',
     values = self.app.infiles,
-    size = (200, 3),
+    size = (200, 7),
     select_mode = sg.LISTBOX_SELECT_MODE_SINGLE,
     enable_events = True,
     ),
@@ -228,9 +233,17 @@ class App():
         try:
             clipper = tuw.cut_util.Clipper(STAMP_FILE_PATH)
             segments = clipper.compute_clips(self.export_runs)
-            clipper.export_moviepy(segments, out_file)
+            clipper.export_gpu(segments, out_file)
         except Exception as e:
             print(f'Export failed: {e}')
+
+    def sort_files(self, files):
+        times = [os.path.getctime(x) for x in files]
+        files = list(sorted(zip(times, files)))
+        _, files = list(zip(*files))
+        return files
+
+
 
     def update_inputs(self):
         for infile in self.window['infiles'].get_list_values():
@@ -241,10 +254,19 @@ class App():
                     print(f"Couldn't load {infile}: {e}")
         self.extract()
 
+    def sort_inputs(self):
+        files = self.window['infiles'].get_list_values()
+        if len(files) == 0:
+            return
+        files = self.sort_files(files)
+        self.window['infiles'].update(files)
+        self.extract()
+
     def add_files(self):
         files = tkfb.askopenfilenames(initialdir = TUW_OUTPUTS, parent=self.window.TKroot, filetypes=[("*.dump", "*.dump"), ("All files","")])
         if len(files) == 0:
             return
+        files = self.sort_files(files)
         self.window['infiles'].add_items_unique(files)
 
         self.update_inputs()
@@ -294,6 +316,8 @@ class App():
                 self.deserialize_numbers()
             elif event == 'do_cut':
                 self.do_cut()
+            elif event == 'sort_files':
+                self.sort_inputs()
 
         window.close()
 
