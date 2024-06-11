@@ -97,6 +97,16 @@ layout = [[
                 )]
     for x in tuw.CollectionFlags]
     ),
+    sg.Column(
+        layout=[[sg.Checkbox(k,
+                default = v,
+                key = f'condition_flags+{k}',
+                enable_events = True,
+                )]
+    for k,v in self.app.conditions.items()]
+    ),
+
+
 ]]
             )
         return result
@@ -153,7 +163,7 @@ DListbox(key = 'infiles',
         return result
 
     def get_layout(self):
-        return [[self.get_inputs(), ], [self.get_config(), self.get_extract(), self.get_output()]]
+        return [[self.get_inputs(), ], [self.get_config(), self.get_extract(),], [self.get_output()]]
         pass
 
 TUW_OUTPUTS = os.path.expanduser('~/.local/share/Steam/steamapps/common/Celeste/tuw_outputs')
@@ -167,6 +177,15 @@ class App():
         self.state_change_flags = 0xcf
         self.collection_flags = 0x7f
         self.numbers = [413, 420, 612, 720, 1025, 1337, 1413, 1612, 1420, 2012, 2020, 2600, 7859,]
+
+        self.conditions = {
+            'room_change': True,
+            'state_change': True,
+            'collection': True,
+            'spawn_change': True,
+            'clusters': True,
+            'long_fail': True,
+            }
 
         self.input_map = {}
         self.export_runs = []
@@ -199,8 +218,9 @@ class App():
             total_runs += len(cut_input.runs)
             _runs, _conds, _counts, _ucounts = cut_input.extract_runs(
                     numbers = self.numbers,
-                    state_change = self.state_change_flags,
-                    collection = self.collection_flags,
+                    state_change_flags = self.state_change_flags,
+                    collection_flags = self.collection_flags,
+                    **self.conditions
                     )
             for key, val in _counts.items():
                 counts[key] += val
@@ -311,6 +331,9 @@ class App():
                     self.collection_flags |= mask
                 else:
                     self.collection_flags &= ~mask
+                self.extract()
+            elif event == 'condition_flags':
+                self.conditions[args[0]] = self.window[base_event].get()
                 self.extract()
             elif event == 'numbers':
                 self.deserialize_numbers()

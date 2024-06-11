@@ -69,7 +69,10 @@ class ClipRun(tuw.StateSequence):
         return result
 
 
-
+class CutInclusion:
+    def __init__(self, run, conditions):
+        self.run = run
+        self.conditions = conditions
 
 class CutInput:
 
@@ -118,7 +121,10 @@ class CutInput:
                 longest_fails.append(longest)
 
 
-    def extract_runs(self, state_change, collection, numbers):
+    def extract_runs(self, state_change_flags, collection_flags, numbers,
+                    room_change = True, state_change = True,
+                    collection = True, spawn_change = True,
+                    clusters = True, long_fail = True,):
         runs = self.runs
 
         export_runs = []
@@ -130,24 +136,24 @@ class CutInput:
         for idx, run in enumerate(runs):
             conditions = set()
             cluster = self.cluster_map.get(run, None)
-            if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
-                conditions.add('room_change')
-            if run.state_change_flags.value & state_change:
-                conditions.add('state change')
-        #        print(run.state_change_flags)
-            if run.collection_flags.value & collection:
-                conditions.add('collection')
-        #        print(run.collection_flags)
-            if idx < len(runs)-1 and not run.match_spawn(runs[idx+1]):
-                conditions.add('spawn change next')
-            if idx > 0 and not run.match_spawn(runs[idx-1]) and not (run.state_change_flags.value&0x01 == 0):
-                conditions.add('spawn change prev')
-            if run in self.cluster_runs and False:
-                conditions.add('cluster')
-        #        print(f'{idx}: from cluster')
-            if run in self.longest_fails:
-                conditions.add('long fail')
-        #        print(f'{idx}: from longest fails')
+
+            if room_change:
+                if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
+                    conditions.add('room_change')
+            if state_change:
+                if run.state_change_flags.value & state_change_flags:
+                    conditions.add('state change')
+            if collection:
+                if run.collection_flags.value & collection_flags:
+                    conditions.add('collection')
+            if spawn_change:
+                if idx < len(runs)-1 and not run.match_spawn(runs[idx+1]):
+                    conditions.add('spawn change next')
+                if idx > 0 and not run.match_spawn(runs[idx-1]) and not (run.state_change_flags.value&0x01 == 0):
+                    conditions.add('spawn change prev')
+            if long_fail:
+                if run in self.longest_fails:
+                    conditions.add('long fail')
             if run.states[0].deaths in numbers:
                 conditions.add('numbers')
 
@@ -162,21 +168,22 @@ class CutInput:
                 if run in self.cluster_runs and not 'cluster' in conditions:
                     counts['cluster'] += 1
 
-        for idx, run in enumerate(runs):
-            conditions = set()
-            cluster = self.cluster_map.get(run, None)
+        if clusters:
+            for idx, run in enumerate(runs):
+                conditions = set()
+                cluster = self.cluster_map.get(run, None)
 
-            if run in self.cluster_runs and not cluster in extant_clusters:
-                conditions.add('cluster')
+                if run in self.cluster_runs and not cluster in extant_clusters:
+                    conditions.add('cluster')
 
-            if len(conditions) > 0:
-                extant_clusters.add(cluster)
-                export_conditions.append(conditions)
-                for cond in conditions:
-                    counts[cond] += 1
-                if len(conditions) == 1:
-                    unique_counts[list(conditions)[0]] += 1
-                export_runs.append((idx, run))
+                if len(conditions) > 0:
+                    extant_clusters.add(cluster)
+                    export_conditions.append(conditions)
+                    for cond in conditions:
+                        counts[cond] += 1
+                    if len(conditions) == 1:
+                        unique_counts[list(conditions)[0]] += 1
+                    export_runs.append((idx, run))
 
         export_runs = sorted(export_runs, key=lambda x: x[0])
         indices, export_runs = list(zip(*export_runs))
@@ -275,7 +282,7 @@ class Clipper:
         with open(list_path, 'w') as fp:
             fp.write(file_list)
 
-        cmd = f'ffmpeg  -y -vsync 0 -hwaccel cuda -hwaccel_output_format cuda -safe 0 -c:v h264_cuvid -f concat -i {list_path} -c:v h264_nvenc -af aresample=async=1000 {output_file} -v quiet -stats'
+        cmd = f'ffmpeg -y -vsync 0 -hwaccel cuda -hwaccel_output_format cuda -safe 0 -c:v h264_cuvid -f concat -i {list_path} -c:v h264_nvenc -af aresample=async=1000 {output_file} -v quiet -stats'
 
         result = subprocess.check_output(cmd, shell=True)
 
