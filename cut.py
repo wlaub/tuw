@@ -50,21 +50,21 @@ extract_config = {
 }
 
 export_runs = []
-export_conditions = []
 counts = defaultdict(lambda:0)
 
 for cut_input in inputs:
-    _runs, _conds, _counts, _ = cut_input.extract_runs(**extract_config)
+    _runs, _counts, _ = cut_input.extract_runs(**extract_config)
     for key, val in _counts.items():
         counts[key] += val
 
     start_time = time.time()
     export_runs.extend(_runs)
-    export_conditions.extend(_conds)
     end_time = time.time()
 
 for key, val in counts.items():
     print(f'{key}: {val} runs')
+
+export_runs = [x.run for x in export_runs]
 
 print(f'{len(export_runs)=}')
 

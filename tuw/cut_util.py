@@ -69,8 +69,9 @@ class ClipRun(tuw.StateSequence):
         return result
 
 
-class CutInclusion:
-    def __init__(self, run, conditions):
+class RunInclusion:
+    def __init__(self, index, run, conditions):
+        self.index = index
         self.run = run
         self.conditions = conditions
 
@@ -94,16 +95,20 @@ class CutInput:
         print(f'{len(runs)} total runs')
 
 
-        self.cluster_runs = cluster_runs = []
-        self.longest_fails = longest_fails = []
-
         self.room_map = room_map = defaultdict(list)
         for run in runs:
             for room in run.rooms:
                 room_map[room].append(run)
 
+        self.compute_clusters()
+
+    def compute_clusters(self):
+
+        self.cluster_runs = cluster_runs = []
+        self.longest_fails = longest_fails = []
+
         self.cluster_map = {}
-        for room, room_runs in room_map.items():
+        for room, room_runs in self.room_map.items():
             try:
                 grp = tuw.clusters.GroupClusters(room_runs)
                 for run, cluster in grp.run_map.items():
@@ -127,9 +132,12 @@ class CutInput:
                     clusters = True, long_fail = True,):
         runs = self.runs
 
+        self.compute_clusters()
+
         export_runs = []
-        export_conditions = []
         extant_clusters = set()
+
+        included_runs = set()
 
         counts = defaultdict(lambda:0)
         unique_counts = defaultdict(lambda:0)
@@ -159,17 +167,23 @@ class CutInput:
 
             if len(conditions) > 0:
                 extant_clusters.add(cluster)
-                export_conditions.append(conditions)
                 for cond in conditions:
                     counts[cond] += 1
                 if len(conditions) == 1:
                     unique_counts[list(conditions)[0]] += 1
-                export_runs.append((idx, run))
+
+#                export_runs.append((idx, run))
+
+                export_runs.append(RunInclusion(idx, run, conditions))
+                included_runs.add(idx)
+
                 if run in self.cluster_runs and not 'cluster' in conditions:
                     counts['cluster'] += 1
 
         if clusters:
             for idx, run in enumerate(runs):
+                if idx in included_runs:
+                    continue
                 conditions = set()
                 cluster = self.cluster_map.get(run, None)
 
@@ -178,22 +192,19 @@ class CutInput:
 
                 if len(conditions) > 0:
                     extant_clusters.add(cluster)
-                    export_conditions.append(conditions)
                     for cond in conditions:
                         counts[cond] += 1
                     if len(conditions) == 1:
                         unique_counts[list(conditions)[0]] += 1
-                    export_runs.append((idx, run))
+#                    export_runs.append((idx, run))
+                    export_runs.append(RunInclusion(idx, run, conditions))
+                    included_runs.add(idx)
 
-        export_runs = sorted(export_runs, key=lambda x: x[0])
-        indices, export_runs = list(zip(*export_runs))
 
-#        for key, val in counts.items():
-#            print(f'{key}: {val} runs')
 
-#        print(f'{len(export_runs)=}')
+        export_runs = list(sorted(export_runs, key=lambda x: x.index))
 
-        return export_runs, export_conditions, counts, unique_counts
+        return export_runs, counts, unique_counts
 
 
 

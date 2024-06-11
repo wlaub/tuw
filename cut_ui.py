@@ -208,7 +208,6 @@ class App():
     def extract(self):
         infiles = self.window['infiles'].get_list_values()
         self.export_runs = export_runs = []
-        self.export_conditions = export_conditions = []
         self.export_counts = counts = defaultdict(lambda:0)
         unique_counts = defaultdict(lambda:0)
 
@@ -230,7 +229,6 @@ class App():
 
             start_time = time.time()
             export_runs.extend(_runs)
-            export_conditions.extend(_conds)
             end_time = time.time()
 
         rows = []
@@ -250,9 +248,11 @@ class App():
             print(f'Nothing to export')
             return
 
+        runs = [x.run for x in self.export_runs]
+
         try:
             clipper = tuw.cut_util.Clipper(STAMP_FILE_PATH)
-            segments = clipper.compute_clips(self.export_runs)
+            segments = clipper.compute_clips(runs)
             clipper.export_gpu(segments, out_file)
         except Exception as e:
             print(f'Export failed: {e}')
