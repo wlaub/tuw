@@ -217,6 +217,9 @@ class StateSequence():
         self.collection_flags |= state.collection_flags
         self.state_change_flags |= state.state_change_flags
 
+    def get_duration(self):
+        return self.states[-1].timestamp - self.states[0].timestamp
+
     def get_length(self):
         if self.length is not None: return self.length
 

@@ -74,6 +74,24 @@ class RunInclusion:
         self.index = index
         self.run = run
         self.conditions = conditions
+        self.death_count = run.states[0].deaths
+
+    def format(self):
+        lines = []
+
+        lines.append(', '.join(self.run.room_order))
+        dur = self.run.get_duration()
+        lines.append(f'{dur:.2f} s')
+        length = self.run.get_length()/1000
+        lines.append(f'{length:.2f} kpx')
+
+
+        lines.append('')
+        condition_keys = ['room_change', 'state change', 'collection', 'spawn change prev', 'spawn change next', 'cluster', 'long fail', 'numbers']
+        condition_lines = [x for x in condition_keys if x in self.conditions]
+        lines.extend(condition_lines)
+
+        return '\n'.join(lines)
 
 class CutInput:
 

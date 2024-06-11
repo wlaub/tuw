@@ -59,6 +59,18 @@ class DListbox(sg.Listbox, ValidMixin):
         selection_indices = [values.index(x) for x in selection]
         self.update(values, set_to_index=selection_indices)
 
+    def scroll_selection(self, amt):
+        values = self.get_list_values()
+        def _inc(x):
+            x+= amt
+            if x < 0:
+                x = 0
+            if x >= len(values):
+                x = len(values) - 1
+            return x
+        indices = [_inc(x) for x in self.get_indexes()]
+        self.update(values, set_to_index = indices, scroll_to_index = indices[0]-7)
+
     def add_items_unique(self, items):
         values = self.get_list_values()
         for item in items:
@@ -124,6 +136,19 @@ layout = [[
         expand_y = True,
         key = 'extract_counts',
         ),
+    DListbox(
+        values = [],
+        size = (8,10),
+        expand_y = True,
+        key = 'selected_runs',
+        select_mode = sg.LISTBOX_SELECT_MODE_SINGLE,
+        enable_events = True,
+        ),
+    sg.Text(
+        key = 'run_detail',
+        size = (40,10),
+        expand_y = True,
+        )
 ]]
             )
         return result
@@ -205,6 +230,18 @@ class App():
         else:
             self.extract()
 
+    def update_run_detail(self):
+        idx = self.window['selected_runs'].get_indexes()
+        if len(idx) == 0:
+            self.window['run_detail'].update('Run Details:')
+
+        idx = idx[0]
+        run = self.export_runs[idx]
+
+        text = f'Run Details:\n{run.format()}'
+
+        self.window['run_detail'].update(text)
+
     def extract(self):
         infiles = self.window['infiles'].get_list_values()
         self.export_runs = export_runs = []
@@ -215,7 +252,7 @@ class App():
         for infile in infiles:
             cut_input = self.input_map[infile]
             total_runs += len(cut_input.runs)
-            _runs, _conds, _counts, _ucounts = cut_input.extract_runs(
+            _runs, _counts, _ucounts = cut_input.extract_runs(
                     numbers = self.numbers,
                     state_change_flags = self.state_change_flags,
                     collection_flags = self.collection_flags,
@@ -237,6 +274,8 @@ class App():
             rows.append([key, val, unique_counts[key]])
 
         self.window['extract_counts'].update(rows)
+
+        self.window['selected_runs'].update([x.death_count for x in export_runs])
 
     def do_cut(self):
         out_file = self.window['outfile'].get()
@@ -262,8 +301,6 @@ class App():
         files = list(sorted(zip(times, files)))
         _, files = list(zip(*files))
         return files
-
-
 
     def update_inputs(self):
         for infile in self.window['infiles'].get_list_values():
@@ -295,7 +332,7 @@ class App():
         self.window = window = sg.Window("cut_ui", self.layout, location=(0,0))
         self.window.Finalize()
 
-        for key in ['infiles']:
+        for key in ['infiles', 'selected_runs']:
             self.window[key].setup()
 
         while True:
@@ -341,6 +378,12 @@ class App():
                 self.do_cut()
             elif event == 'sort_files':
                 self.sort_inputs()
+            elif event == 'selected_runs':
+                if 'listbox_up' in args:
+                    self.window[event].scroll_selection(-1)
+                if 'listbox_down' in args:
+                    self.window[event].scroll_selection(1)
+                self.update_run_detail()
 
         window.close()
 
