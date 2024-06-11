@@ -270,7 +270,7 @@ class App():
 
         rows = []
         rows.append(['Total Runs', len(export_runs), total_runs])
-        for key, val in counts.items():
+        for key, val in sorted(counts.items()):
             rows.append([key, val, unique_counts[key]])
 
         self.window['extract_counts'].update(rows)
