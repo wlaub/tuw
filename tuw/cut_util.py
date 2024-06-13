@@ -294,7 +294,41 @@ class Clipper:
         print(f'{len(clips)=})')
 
         out_clip = moviepy.editor.concatenate_videoclips(clips)
-        out_clip.write_videofile(output_file)
+        out_clip.write_videofile(output_file, codec='h264_nvenc')
+
+    def _export_gpu(self, segments, output_file):
+        output_file = self.get_full_output_file(output_file)
+
+        video_list= []
+        for start, end, base, vidname in segments:
+            if not vidname in video_list:
+                video_list.append(vidname)
+
+        def input_map(x):
+            return f'-hwaccel cuda -hwaccel_output_format cuda -c:v h264_cuvid -i {x}'
+
+        input_term = ' '.join([input_map(x) for x in video_list])
+
+        lines = []
+        labels = []
+        for sidx, (start, end, base, vidname) in enumerate(segments):
+            index = video_list.index(vidname)
+            vlabel = f'[v{sidx}]'
+            alabel = f'[a{sidx}]'
+            lines.append(f'[{index}:v]trim={start}:{end},setpts=PTS-STARTPTS{vlabel};')
+            lines.append(f'[{index}:a]atrim={start}:{end},asetpts=PTS-STARTPTS{alabel};')
+            labels.append(vlabel)
+            labels.append(alabel)
+
+        end_term = ''.join(labels)+f'concat=n={len(segments)}:v=1:a=1'
+        lines.append(end_term)
+
+        complex_filter = ''.join(lines)
+
+        cmd = f'ffmpeg -y -vsync 0 {input_term} -filter_complex "{complex_filter}" -c:v h264_nvenc {output_file} -v quiet -stats'
+
+        result = subprocess.check_output(cmd, shell=True)
+
 
     def export_gpu(self, segments, output_file):
         output_file = self.get_full_output_file(output_file)

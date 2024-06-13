@@ -1,6 +1,8 @@
 import sys, os
 import time
 
+os.environ['FFMPEG_BINARY'] = 'ffmpeg'
+
 from collections import defaultdict
 
 import moviepy.editor
@@ -290,9 +292,12 @@ class App():
         runs = [x.run for x in self.export_runs]
 
         try:
+            start_time = time.time()
             clipper = tuw.cut_util.Clipper(STAMP_FILE_PATH)
             segments = clipper.compute_clips(runs)
-            clipper.export_gpu(segments, out_file)
+            clipper.export_moviepy(segments, out_file)
+            duration = time.time()-start_time
+            print(f'Finished in {duration:.1f} s')
         except Exception as e:
             print(f'Export failed: {e}')
 
