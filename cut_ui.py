@@ -84,6 +84,8 @@ class Layout():
 
     def __init__(self, app):
         self.app = app
+        self.max_width = 150
+
 
     def get_config(self):
         result = sg.Column(
@@ -180,7 +182,7 @@ sg.Column(layout=[
 ),
 DListbox(key = 'infiles',
     values = self.app.infiles,
-    size = (200, 7),
+    size = (self.max_width, 7),
     select_mode = sg.LISTBOX_SELECT_MODE_SINGLE,
     enable_events = True,
     ),
@@ -189,8 +191,52 @@ DListbox(key = 'infiles',
 
         return result
 
+    def get_clusters(self):
+        result = sg.Column(
+layout = [[
+    DListbox(
+        values = [],
+        size = (8,17),
+        expand_y = True,
+        key = 'cluster_rooms',
+        select_mode = sg.LISTBOX_SELECT_MODE_SINGLE,
+        enable_events = True,
+        ),
+    DListbox(
+        values = [],
+        size = (8,10),
+        expand_y = True,
+        key = 'room_clusters',
+        select_mode = sg.LISTBOX_SELECT_MODE_SINGLE,
+        enable_events = True,
+        ),
+    sg.Text(
+        key = 'cluster_detail',
+        size = (24,10),
+        expand_y = True,
+        ),
+    DListbox(
+        values = [],
+        size = (8,10),
+        expand_y = True,
+        key = 'cluster_runs',
+        select_mode = sg.LISTBOX_SELECT_MODE_SINGLE,
+        enable_events = True,
+        ),
+
+]]
+            )
+        return result
+
+
+
     def get_layout(self):
-        return [[self.get_inputs(), ], [self.get_config(), self.get_extract(),], [self.get_output()]]
+        return [[self.get_inputs(), ],
+                [self.get_config(), self.get_extract(),],
+                [self.get_clusters()],
+                [self.get_output()],
+#                [sg.Output(size=(self.max_width, 10), expand_x=True, echo_stdout_stderr=True)],
+                ]
         pass
 
 TUW_OUTPUTS = os.path.expanduser('~/.local/share/Steam/steamapps/common/Celeste/tuw_outputs')
@@ -218,6 +264,11 @@ class App():
         self.export_runs = []
 
         self.layout = Layout(self).get_layout()
+
+        self.cluster_room_list = []
+        self.cluster_room_selection = None
+        self.cluster_run_list = []
+        self.cluster_run_selection = None
 
 
     def serialize_numbers(self):
@@ -279,6 +330,61 @@ class App():
 
         self.window['selected_runs'].update([x.death_count for x in export_runs])
 
+    def update_cluster_rooms(self):
+        self.cluster_room_list = []
+        for _, cut_input in self.input_map.items():
+            input_cms = cut_input.room_to_clusters.items()
+            self.cluster_room_list.extend(input_cms)
+
+        if len(self.cluster_room_list) == 0:
+            room_options = []
+        else:
+            room_options, _ = zip(*self.cluster_room_list)
+        self.window['cluster_rooms'].update(room_options)
+
+    def update_cluster_room_selection(self):
+        room = self.window['cluster_rooms'].get_indexes()
+        if len(room) == 0: return
+        room_idx = room[0]
+
+        if room_idx == self.cluster_room_selection:
+            return
+
+        self.cluster_room_selection = room_idx
+        cm = self.cluster_room_list[room_idx][1]
+
+        values = list(x[0] for x in cm.clusters_by_size)
+        self.window['room_clusters'].update(values)
+
+    def update_cluster_selection(self):
+        label = self.window['room_clusters'].get()
+        if len(label) == 0: return
+        label = label[0]
+
+        cm = self.cluster_room_list[self.cluster_room_selection][1]
+
+        runs = cm.cluster_to_runs[label]
+
+        self.cluster_run_list = runs
+        self.window['cluster_runs'].update([x.states[0].deaths for x in runs])
+
+        centroid = cm.grp.clst.centroids_[label]
+        def fmt_centroid(x):
+            return [
+                f'Length: {x[0]:.0f} px',
+                f'Start: {x[1]:.1f}, {x[2]:.1f}',
+                f'End: {x[3]:.1f}, {x[4]:.1f}'
+                ]
+
+
+        lines = []
+        lines.append(f'{len(runs)} runs')
+        lines.extend(fmt_centroid(centroid))
+
+        text = '\n'.join(lines)
+        self.window['cluster_detail'].update(text)
+
+
     def do_cut(self):
         out_file = self.window['outfile'].get()
         if not out_file.endswith('.mp4'):
@@ -315,6 +421,7 @@ class App():
                 except Exception as e:
                     print(f"Couldn't load {infile}: {e}")
         self.extract()
+        self.update_cluster_rooms()
 
     def sort_inputs(self):
         files = self.window['infiles'].get_list_values()
@@ -389,6 +496,11 @@ class App():
                 if 'listbox_down' in args:
                     self.window[event].scroll_selection(1)
                 self.update_run_detail()
+            elif event == 'room_clusters':
+                self.update_cluster_selection()
+            elif event == 'cluster_rooms':
+                self.update_cluster_room_selection()
+
 
         window.close()
 

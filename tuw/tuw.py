@@ -267,6 +267,9 @@ class Run(StateSequence):
 
         self._add_state(state)
 
+    def __str__(self):
+        return self.states[0].deaths
+
 class RoomRun(Run):
 
     def add_state(self, state):

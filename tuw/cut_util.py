@@ -93,6 +93,36 @@ class RunInclusion:
 
         return '\n'.join(lines)
 
+class ClusterManager:
+    def __init__(self, room, room_runs):
+        self.room = room
+        self.room_runs = room_runs
+        self.run_to_cluster = {}
+        self.cluster_to_runs = defaultdict(list)
+
+        self.cluster_runs = []
+
+    def compute_clusters(self):
+        try:
+            grp = self.grp = tuw.clusters.GroupClusters(self.room_runs)
+            for run, cluster in grp.run_map.items():
+                self.run_to_cluster[run] = cluster
+                self.cluster_to_runs[cluster].append(run)
+
+            self.clusters_by_size = self.grp.labels_by_size
+
+        except (ValueError, IndexError) as e:
+            #print(f'Failed to cluster on {room}: {e}')
+            raise
+        else:
+            self.select_clusters()
+
+    def select_clusters(self):
+        count = len(self.grp.labels_by_size)
+        N = int(count/6)
+        self.cluster_runs = self.grp.get_best_runs(N, lambda x:x.run.states[0].sequence)
+
+
 class CutInput:
 
     def __init__(self, infile):
@@ -122,11 +152,19 @@ class CutInput:
 
     def compute_clusters(self):
 
+        self.room_to_clusters = {}
+
         self.cluster_runs = cluster_runs = []
         self.longest_fails = longest_fails = []
 
         self.cluster_map = {}
         for room, room_runs in self.room_map.items():
+            cm = ClusterManager(room, room_runs)
+            try:
+                cm.compute_clusters()
+                self.room_to_clusters[room] = cm
+            except:
+                pass
             try:
                 grp = tuw.clusters.GroupClusters(room_runs)
                 for run, cluster in grp.run_map.items():
@@ -149,8 +187,6 @@ class CutInput:
                     collection = True, spawn_change = True,
                     clusters = True, long_fail = True,):
         runs = self.runs
-
-        self.compute_clusters()
 
         export_runs = []
         extant_clusters = set()
