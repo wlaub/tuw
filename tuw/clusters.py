@@ -2,6 +2,7 @@
 from collections import defaultdict
 
 import sklearn.cluster as skcluster
+import sklearn.mixture
 
 from matplotlib import pyplot as plt
 
@@ -14,14 +15,25 @@ class RunStats:
         self.point = self.get_point()
 
     def get_point(self):
+
+        if self.run.death_state is not None:
+            death_state = self.run.death_state
+        else:
+            death_state = self.run.states[-1]
+
         point = (self.run.get_length(),
-                self.run.states[-1].xpos, self.run.states[-1].ypos,
+                death_state.xpos, death_state.ypos,
                 self.run.states[0].xpos, self.run.states[0].ypos)
+
+        point = (0,
+                death_state.xpos, death_state.ypos,
+                self.run.states[0].xpos, self.run.states[0].ypos)
+
         return point
 
     def ingest_cluster(self, clusters):
         self.label = clusters.labels_[self.idx]
-        self.centroid = clusters.centroids_[self.label]
+        self.centroid = get_centroid(clusters, self.label)
         self.dist = sum([(x-y)**2 for x,y in zip(self.point, self.centroid)])
 
 class GroupClusters:
@@ -79,8 +91,18 @@ def get_points(runs):
 
     return result
 
+def get_centroid(clusters, label):
+#    return (0,0,0,0,0)
+#    return clusters.cluster_centers_[label]
+    return clusters.centroids_[label]
+
 
 def get_clusters(points):
+#    hdb = skcluster.OPTICS()
+#    hdb.fit(points)
+#    return hdb
+
+
     hdb = skcluster.HDBSCAN(min_cluster_size=2, store_centers = 'centroid')
     hdb.fit(points)
     return hdb

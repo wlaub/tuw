@@ -194,6 +194,9 @@ class StateSequence():
         self.states = []
         self.done = False
 
+        self.death_state = None
+        self.death_state_index = -1
+
         self.rooms = set()
         self.room_order = []
         self.control_flags = ControlFlags(0)
@@ -216,6 +219,9 @@ class StateSequence():
         self.control_flags |= state.control_flags
         self.collection_flags |= state.collection_flags
         self.state_change_flags |= state.state_change_flags
+        if self.death_state is None and ControlFlags.dead in state.control_flags:
+            self.death_state = state
+            self.death_state_index = len(self.states)-1
 
     def get_duration(self):
         return self.states[-1].timestamp - self.states[0].timestamp

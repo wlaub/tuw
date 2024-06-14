@@ -13,7 +13,7 @@ import tkfilebrowser as tkfb
 
 import tuw
 import tuw.cut_util
-
+import tuw.clusters
 
 
 
@@ -223,6 +223,12 @@ layout = [[
         select_mode = sg.LISTBOX_SELECT_MODE_SINGLE,
         enable_events = True,
         ),
+    sg.Canvas(
+        key = 'cluster_render',
+        border_width = 1,
+        background_color = 'white',
+        size = (500,500),
+        )
 
 ]]
             )
@@ -367,13 +373,14 @@ class App():
 
         self.cluster_run_list = runs
         self.window['cluster_runs'].update([x.states[0].deaths for x in runs])
+        self.cluster_run_selection = None
 
-        centroid = cm.grp.clst.centroids_[label]
+        centroid = tuw.clusters.get_centroid(cm.grp.clst, label)
         def fmt_centroid(x):
             return [
                 f'Length: {x[0]:.0f} px',
-                f'Start: {x[1]:.1f}, {x[2]:.1f}',
-                f'End: {x[3]:.1f}, {x[4]:.1f}'
+                f'Start: {x[3]:.1f}, {x[4]:.1f}',
+                f'End: {x[1]:.1f}, {x[2]:.1f}',
                 ]
 
 
@@ -383,6 +390,67 @@ class App():
 
         text = '\n'.join(lines)
         self.window['cluster_detail'].update(text)
+
+        self.update_cluster_run_selection()
+
+    def update_cluster_run_selection(self):
+        run_idx = self.window['cluster_runs'].get_indexes()
+        if len(run_idx) == 0:
+            run_idx = None
+        else:
+            run_idx = run_idx[0]
+
+        canvas = self.window['cluster_render'].TKCanvas
+        canvas.delete('all')
+
+        self.cluster_run_selection = run_idx
+
+        xmins = []
+        ymins = []
+        ymaxes = []
+        xmaxes = []
+        for idx, run in enumerate(self.cluster_run_list):
+            xmins.append(min(run.states, key=lambda x: x.xpos).xpos)
+            ymins.append(min(run.states, key=lambda x: x.ypos).ypos)
+            xmaxes.append(max(run.states, key=lambda x: x.xpos).xpos)
+            ymaxes.append(max(run.states, key=lambda x: x.ypos).ypos)
+
+        xmin = min(xmins)
+        ymin = min(ymins)
+        ymax = max(ymaxes)
+        xmax = max(xmaxes)
+
+        width = xmax-xmin
+        height = ymax-ymin
+
+        scale = 480/max(width, height)
+
+        xoff = (500-width*scale)/2
+        yoff = (500-height*scale)/2
+
+        label = self.window['room_clusters'].get()
+        if len(label) != 0:
+            label = label[0]
+
+            cm = self.cluster_room_list[self.cluster_room_selection][1]
+            _, end_x, end_y, start_x, start_y = tuw.clusters.get_centroid(cm.grp.clst, label)
+            def circle(x, y, s):
+                x = xoff+(x-xmin)*scale
+                y = yoff+(y-ymin)*scale
+                canvas.create_oval(x-s, y-s, x+s, y+s, fill='black')
+            circle(start_x, start_y, 4)
+            circle(end_x, end_y, 4)
+
+        for idx, run in enumerate(self.cluster_run_list):
+            if idx == run_idx: pass
+            points = [(xoff+scale*(x.xpos-xmin), yoff+scale*(x.ypos-ymin)) for x in run.states[:run.death_state_index]]
+
+            canvas.create_line(points, fill = 'gray')
+
+        if run_idx is not None:
+            run = self.cluster_run_list[run_idx]
+            points = [(xoff+scale*(x.xpos-xmin), yoff+scale*(x.ypos-ymin)) for x in run.states[:run.death_state_index]]
+            canvas.create_line(points, fill = 'red')
 
 
     def do_cut(self):
@@ -500,7 +568,8 @@ class App():
                 self.update_cluster_selection()
             elif event == 'cluster_rooms':
                 self.update_cluster_room_selection()
-
+            elif event == 'cluster_runs':
+                self.update_cluster_run_selection()
 
         window.close()
 
