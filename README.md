@@ -4,7 +4,9 @@ Disclaimer: I have no idea what I'm doing.
 
 This mod gathers up some game state info and makes it available as binary data packets by various means.
 
-If the "Write File" option is on (default off), then it will dump game state into a binary file at `Celeste/tuw_outputs/<timestamp>_<map>.dump`. The first packet dumped includes map and chapter names, but subsequent packets do not. Note that this write happens inside the game loop and is blocking, so could cause performance problems if disk IO is sufficiently slow.
+If the "Write File" option is on (default off), then it will dump game state into a binary file at `Celeste/tuw_outputs/<timestamp>_<map>.dump`. The first packet dumped includes map and chapter names, but subsequent packets do not. 
+
+Packets are queued up until the player dies, leaves the map, or pauses at which point they are written to disk. While paused, the packets are written to disk every 60 seconds to avoid accumulating too many.
 
 The latest game state packed including map and chapter names is written a memory mapped file at `celeste_tuw` (windows) or `/tmp/celeste_tuw.share` (linux) and can be accessed by other processes (e.g. an obs script) for realtime gamestate information (see `obs_script.py` for a python example (not tested on windows)).
 
