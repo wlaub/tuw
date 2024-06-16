@@ -488,6 +488,7 @@ class App():
                     self.input_map[infile] = tuw.cut_util.CutInput(infile)
                 except Exception as e:
                     print(f"Couldn't load {infile}: {e}")
+                    raise
         self.extract()
         self.update_cluster_rooms()
 

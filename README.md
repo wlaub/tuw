@@ -97,6 +97,16 @@ The packet only appears in the dump file when it contains an event. It always ap
 
 \* = The DoNotLoad HashSet count increased, meaning something was permanently removed (e.g. fake walls, permanent dash blocks, keys)
 
+### Flag Changes (variable)
+
+|Name | Type | Offset | Description |
+|----|----|---|---|
+| id = 0x02 |  unsigned byte(1) | 0 | Indicates that this is a transient state packet |
+| length  | unsigned int(4) | 1 | Length of the remainder packet |
+| flag state | unsigned byte (1) | x | The new state of the flag |
+| flag name | null-terminated string | x+1 | The name of the flag |
+
+#
 ### Stream Info
 This is an arbitrary length sequence of null-terminated ascii strings. The first one is the current chapter name, and the second one is the current mod (map) name.
 

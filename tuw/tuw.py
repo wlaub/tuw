@@ -96,6 +96,7 @@ class GameState():
         'button_flags', 'direction_flags',
         'xaim', 'yaim',
         'collection_flags', 'state_change_flags',
+        'flag_changes',
         'strings',
         )
     def __init__(self, raw):
@@ -125,16 +126,26 @@ class GameState():
         self.direction_flags = DirectionFlags(directions)
         raw = raw[size:]
 
-        if len(raw) > 0 and raw[0] == 1:
-            size = int(raw[1])
-            raw = raw[2:]
-            self.collection_flags = CollectionFlags(int(raw[0]))
-            self.state_change_flags = StateChangeFlags(int(raw[1]))
-            raw = raw[size:]
-        else:
-            self.collection_flags = CollectionFlags(0)
-            self.state_change_flags = StateChangeFlags(0)
+        self.collection_flags = CollectionFlags(0)
+        self.state_change_flags = StateChangeFlags(0)
+        self.flag_changes = []
 
+        while len(raw) > 0:
+            if raw[0] == 1:
+                size = int(raw[1])
+                raw = raw[2:]
+                self.collection_flags = CollectionFlags(int(raw[0]))
+                self.state_change_flags = StateChangeFlags(int(raw[1]))
+                raw = raw[size:]
+            elif raw[0] == 2:
+                size = struct.unpack('=H', raw[1:3])[0]
+                chunk, raw = raw[3:size], raw[size:]
+                chunks = chunk.split(b'\x00')[:-1]
+                for chunk in chunks:
+                    fc = (chunk[1:].decode('ascii'), int(chunk[0]))
+                    self.flag_changes.append(fc)
+            else:
+                break
         self.strings = [x.decode('ascii') for x in raw.split(b'\x00')][:-1]
 
 class StateDump():

@@ -4,6 +4,7 @@ using System.Text;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.IO.MemoryMappedFiles;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
 using Monocle;
@@ -241,6 +242,36 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
     }
 
+    public struct OutputPacket
+    {
+        public byte[] buffer;
+        public int size;
+    }
+
+    public struct FlagChange
+    {
+        public string flag;
+        public bool state;
+
+        public ushort get_size()
+        {
+            return (ushort)(flag.Length + 2);
+        }
+
+        public void write(byte[] buffer, ushort offset)
+        {
+            if(state)
+            {
+                buffer[offset] = 1;
+            }
+            else
+            {
+                buffer[offset] = 255;
+            }
+            Encoding.ASCII.GetBytes(flag).CopyTo(buffer, offset+1);
+        }
+    }
+
     public class TheUltimateWednesdayModule : EverestModule {
         public static TheUltimateWednesdayModule Instance { get; private set; }
 
@@ -273,6 +304,12 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
         public static int dnl_count = 0;
 
+        public static List<OutputPacket> output_queue;
+        public static double last_dump = 0;
+
+        public static List<FlagChange> flag_changes;
+        public static int _flag_buffer_size = 0;
+
         public TheUltimateWednesdayModule() {
             Instance = this;
 #if DEBUG
@@ -285,6 +322,9 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
             output_dir = Path.Combine(Everest.PathGame, "tuw_outputs");
             Directory.CreateDirectory(output_dir);
+
+            output_queue = new();
+            flag_changes = new();
 
             open_mm_file();
 
@@ -333,9 +373,11 @@ namespace Celeste.Mod.TheUltimateWednesday {
             Everest.Events.Level.OnEnter += on_enter_hook;
             Everest.Events.Level.OnExit += on_exit_hook;
             Everest.Events.LevelLoader.OnLoadingThread += on_loading_thread;
+
             On.Monocle.Engine.Update += Update;
 
             Everest.Events.Player.OnSpawn += on_spawn_hook;
+            Everest.Events.Player.OnDie += on_die;
 
             //Transients
             //Collection
@@ -368,6 +410,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
             Everest.Events.LevelLoader.OnLoadingThread -= on_loading_thread;
 
             Everest.Events.Player.OnSpawn -= on_spawn_hook;
+            Everest.Events.Player.OnDie -= on_die;
 
             //Transients
             On.Celeste.Leader.GainFollower -= gain_follower_hook;
@@ -406,10 +449,15 @@ namespace Celeste.Mod.TheUltimateWednesday {
             if(old_value != set_to)
             {
 //Logger.Log(LogLevel.Info, "tuw", $"Flag change {flag} from {old_value} to {set_to}");
-                //TODO: some kind of transient packet giving the flag name and state
-                if(flag!= "VivHelper/IsPlayerAlive")
+                trans_state.state_flags |= 0x01<<4;
+
+                FlagChange fc = new();
+                fc.flag = flag;
+                fc.state = set_to;
+                if(_flag_buffer_size+fc.get_size() < 60000) //margin for overhead
                 {
-                    trans_state.state_flags |= 0x01<<4;
+                    flag_changes.Add(fc);
+                    _flag_buffer_size += fc.get_size();
                 }
             }
             orig(self, flag, set_to);
@@ -547,9 +595,77 @@ namespace Celeste.Mod.TheUltimateWednesday {
 
         private void on_exit_hook(Level level, LevelExit exit, LevelExit.Mode mode, Session session, HiresSnow snow)
         {
+            dump_states();
+
             in_level = false;
             close_dump_file();
 
+        }
+
+        public static void dump_states()
+        {
+            if(output_queue.Count == 0)
+            {
+                return;
+            }
+
+            if(fp == null && Settings.write_file)
+            {
+                open_dump_file();
+            }
+            if(fp != null)
+            {
+                foreach(OutputPacket packet in output_queue)
+                {
+                    fp.Write(packet.buffer, 0, packet.size);
+                }
+                output_queue.Clear();        
+                last_dump = DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+ 
+ 
+                if(!Settings.write_file)
+                {
+                    close_dump_file();
+                }
+
+            }
+        }
+
+        public static void on_die(Player player)
+        {
+            dump_states();
+        }
+
+        public static byte[] dump_flag_changes()
+        {
+
+            if(flag_changes.Count == 0)
+            {
+                return new byte[0];
+            }
+
+            ushort buffer_size = 3;
+
+            foreach(FlagChange fc in flag_changes)
+            {
+                buffer_size += fc.get_size();
+            }
+
+            byte[] result = new byte[buffer_size];
+            result[0] = 0x02;
+            BitConverter.GetBytes(buffer_size).CopyTo(result, 1);
+
+            ushort offset = 3;
+            foreach(FlagChange fc in flag_changes)
+            {
+                fc.write(result, offset);
+                offset += fc.get_size();
+            }
+
+            flag_changes.Clear();
+            _flag_buffer_size = 3;
+
+            return result;
         }
 
         public static void Update(On.Monocle.Engine.orig_Update orig, Engine self, GameTime gameTime)
@@ -577,60 +693,71 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 byte[] input = input_state.to_bytes();
                 byte[] transient_info = trans_state.to_bytes();
                 byte[] stream_info = stream_state.to_bytes();
+                byte[] flag_buffer = dump_flag_changes();
 
                 bool has_transient = trans_state.has();
                 trans_state.clear();
 
                 ushort size = (ushort)(header.Length+player.Length+input.Length);
-                byte[] size_header = BitConverter.GetBytes(size);
-
-                ushort mm_size = (ushort)(size + transient_info.Length + stream_info.Length);
-                byte[] mm_size_header = BitConverter.GetBytes(mm_size);
 
                 if(has_transient)
                 {   //Include the transient output in the dump buffer, update size accordingly
-                    size += (ushort)transient_info.Length;
-                    size_header = BitConverter.GetBytes(size);
+                    size += (ushort)transient_info.Length;    
                 }
+                if(flag_buffer.Length > 5)
+                {
+                    size += (ushort)flag_buffer.Length;
+                }
+
+                byte[] size_header = BitConverter.GetBytes(size);               
+                ushort mm_size = (ushort)(size + stream_info.Length);
+                byte[] mm_size_header = BitConverter.GetBytes(mm_size);
 
                 byte[] buffer = new byte[2 + mm_size];
                 int offset = 0;
-                size_header.CopyTo(buffer, offset);
+                buffer[0] = mm_size_header[0];
+                buffer[1] = mm_size_header[1];
                 offset += 2;
+                //Static Packets
                 header.CopyTo(buffer, offset); offset += header.Length;
                 player.CopyTo(buffer, offset); offset += player.Length;
                 input.CopyTo(buffer, offset); offset += input.Length;
-                transient_info.CopyTo(buffer, offset); offset += transient_info.Length;
+                //Transient Packets
+                if(has_transient)
+                {
+                    transient_info.CopyTo(buffer, offset); offset += transient_info.Length;
+                }
+                if(flag_buffer.Length > 5)
+                {
+                    flag_buffer.CopyTo(buffer, offset); offset += flag_buffer.Length;
+                }
+                //Stream Infos
                 stream_info.CopyTo(buffer, offset); offset += stream_info.Length;
-
                 //write out
-                if(fp == null && Settings.write_file)
-                {
-                    open_dump_file();
-                }
-                if(fp != null)
-                {
-                    if(first_packet)
-                    {
-                        first_packet = false;
-                        buffer[0] = mm_size_header[0];
-                        buffer[1] = mm_size_header[1];
-                        fp.Write(buffer);
-                    }
-                    else
-                    {
-                        fp.Write(buffer, 0, size+2);
-                    }
-                    if(!Settings.write_file)
-                    {
-                        close_dump_file();
-                    }
- 
-                }
-                buffer[0] = mm_size_header[0];
-                buffer[1] = mm_size_header[1];
 
                 mm_write(buffer);
+
+                OutputPacket packet = new();
+                if(first_packet)
+                {
+                    first_packet = false;
+                    packet.size = buffer.Length;
+                }
+                else
+                {
+                    buffer[0] = size_header[0];
+                    buffer[1] = size_header[1];
+                    packet.size = size+2;
+                }
+
+                packet.buffer = buffer;
+                
+                output_queue.Add(packet);
+
+                if(level.Paused && header_state.timestamp - last_dump > 60)
+                {
+                    dump_states();
+                }
 
             }
         }
