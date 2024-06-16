@@ -99,12 +99,16 @@ The packet only appears in the dump file when it contains an event. It always ap
 
 ### Flag Changes (variable)
 
+The packet only appears when at least one flag changed state.
+
 |Name | Type | Offset | Description |
 |----|----|---|---|
 | id = 0x02 |  unsigned byte(1) | 0 | Indicates that this is a transient state packet |
 | length  | unsigned int(4) | 1 | Length of the remainder packet |
-| flag state | unsigned byte (1) | x | The new state of the flag |
+| flag state | unsigned byte (1) | x | 1 = on, 255 = off |
 | flag name | null-terminated string | x+1 | The name of the flag |
+
+After the id/length header, the packet consistents of any number of pairs of (flag state, flag name). In order to allow splitting on the null terminator, a flag state of off is represented by 255 (-1 signed) instead of 0.
 
 #
 ### Stream Info
