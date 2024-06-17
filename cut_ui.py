@@ -1,5 +1,6 @@
 import sys, os
 import time
+import traceback
 
 os.environ['FFMPEG_BINARY'] = 'ffmpeg'
 
@@ -241,7 +242,7 @@ layout = [[
                 [self.get_config(), self.get_extract(),],
                 [self.get_clusters()],
                 [self.get_output()],
-#                [sg.Output(size=(self.max_width, 10), expand_x=True, echo_stdout_stderr=True)],
+                [sg.Output(size=(self.max_width, 10), expand_x=True, echo_stdout_stderr=True)],
                 ]
         pass
 
@@ -524,53 +525,56 @@ class App():
                 event, *args = event.split('+')
             print(event, args)
 
-            if event == sg.WIN_CLOSED or event == 'Exit':
-                break
-            elif event == 'infiles':
-                if 'listbox_delete' in args:
-                    self.window[event].delete_selection()
-                if 'listbox_up' in args:
-                    self.window[event].move_selection(-1)
-                if 'listbox_down' in args:
-                    self.window[event].move_selection(1)
-                self.extract()
-            elif event == 'add_files':
-                self.add_files()
-            elif event == 'state_change_flags':
-                mask = int(args[0])
-                if self.window[base_event].get():
-                    self.state_change_flags |= mask
-                else:
-                    self.state_change_flags &= ~mask
-                self.extract()
-            elif event == 'collection_flags':
-                mask = int(args[0])
-                if self.window[base_event].get():
-                    self.collection_flags |= mask
-                else:
-                    self.collection_flags &= ~mask
-                self.extract()
-            elif event == 'condition_flags':
-                self.conditions[args[0]] = self.window[base_event].get()
-                self.extract()
-            elif event == 'numbers':
-                self.deserialize_numbers()
-            elif event == 'do_cut':
-                self.do_cut()
-            elif event == 'sort_files':
-                self.sort_inputs()
-            elif event == 'selected_runs':
-                if 'listbox_up' in args:
-                    self.window[event].scroll_selection(-1)
-                if 'listbox_down' in args:
-                    self.window[event].scroll_selection(1)
-                self.update_run_detail()
-            elif event == 'room_clusters':
-                self.update_cluster_selection()
-            elif event == 'cluster_rooms':
-                self.update_cluster_room_selection()
-            elif event == 'cluster_runs':
-                self.update_cluster_run_selection()
+            try:
+                if event == sg.WIN_CLOSED or event == 'Exit':
+                    break
+                elif event == 'infiles':
+                    if 'listbox_delete' in args:
+                        self.window[event].delete_selection()
+                    if 'listbox_up' in args:
+                        self.window[event].move_selection(-1)
+                    if 'listbox_down' in args:
+                        self.window[event].move_selection(1)
+                    self.extract()
+                elif event == 'add_files':
+                    self.add_files()
+                elif event == 'state_change_flags':
+                    mask = int(args[0])
+                    if self.window[base_event].get():
+                        self.state_change_flags |= mask
+                    else:
+                        self.state_change_flags &= ~mask
+                    self.extract()
+                elif event == 'collection_flags':
+                    mask = int(args[0])
+                    if self.window[base_event].get():
+                        self.collection_flags |= mask
+                    else:
+                        self.collection_flags &= ~mask
+                    self.extract()
+                elif event == 'condition_flags':
+                    self.conditions[args[0]] = self.window[base_event].get()
+                    self.extract()
+                elif event == 'numbers':
+                    self.deserialize_numbers()
+                elif event == 'do_cut':
+                    self.do_cut()
+                elif event == 'sort_files':
+                    self.sort_inputs()
+                elif event == 'selected_runs':
+                    if 'listbox_up' in args:
+                        self.window[event].scroll_selection(-1)
+                    if 'listbox_down' in args:
+                        self.window[event].scroll_selection(1)
+                    self.update_run_detail()
+                elif event == 'room_clusters':
+                    self.update_cluster_selection()
+                elif event == 'cluster_rooms':
+                    self.update_cluster_room_selection()
+                elif event == 'cluster_runs':
+                    self.update_cluster_run_selection()
+            except Exception as e:
+                traceback.print_exception(e)
 
         window.close()
 
