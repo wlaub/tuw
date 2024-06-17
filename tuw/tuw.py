@@ -2,6 +2,8 @@ import os, sys
 import struct
 import enum
 
+from collections import defaultdict
+
 class ControlFlags(enum.Flag):
     dead = 128
     control = 64
@@ -142,7 +144,7 @@ class GameState():
                 chunk, raw = raw[3:size], raw[size:]
                 chunks = chunk.split(b'\x00')[:-1]
                 for chunk in chunks:
-                    fc = (chunk[1:].decode('ascii'), int(chunk[0]))
+                    fc = (chunk[1:].decode('ascii'), not (int(chunk[0])-1))
                     self.flag_changes.append(fc)
             else:
                 break
@@ -190,6 +192,39 @@ class StateDump():
 
         return result
 
+class FlagSet():
+    def __init__(self):
+        #default dict would be nice but i want to assume that
+        #there are no keys with a value of 0
+
+        self.flags_changed = {}
+        self.flags_set = {}
+        self.flags_cleared = {}
+
+    @staticmethod
+    def _inc(data, key, amount = 1):
+        if not key in data.keys():
+            data[key] = amount
+        else:
+            data[key] += amount
+
+    def add_flag(self, name, value):
+        self._inc(self.flags_changed, name)
+        if value:
+            self._inc(self.flags_set, name)
+        else:
+            self._inc(self.flags_cleared, name)
+
+    @staticmethod
+    def _merge(into, other):
+        for key, val in other.items():
+            FlagSet._inc(into, key, val)
+
+    def merge_into_self(self, other):
+        self._merge(self.flags_changed, other.flags_changed)
+        self._merge(self.flags_set, other.flags_set)
+        self._merge(self.flags_cleared, other.flags_cleared)
+
 class StateSequence():
     """
     A sequence of states with logic for segmenting and validation. Pass as an
@@ -214,6 +249,8 @@ class StateSequence():
         self.collection_flags = CollectionFlags(0)
         self.state_change_flags = StateChangeFlags(0)
 
+        self.flag_changes = FlagSet()
+
         self.length = None
 
     def valid(self):
@@ -233,6 +270,15 @@ class StateSequence():
         if self.death_state is None and ControlFlags.dead in state.control_flags:
             self.death_state = state
             self.death_state_index = len(self.states)-1
+
+        def _inc(data, key):
+            if not key in data.keys():
+                data[key] = 1
+            else:
+                data[key] += 1
+
+        for flag_name, flag_state in state.flag_changes:
+            self.flag_changes.add_flag(flag_name, flag_state)
 
     def get_duration(self):
         return self.states[-1].timestamp - self.states[0].timestamp

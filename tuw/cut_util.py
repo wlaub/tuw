@@ -148,6 +148,10 @@ class CutInput:
             for room in run.rooms:
                 room_map[room].append(run)
 
+        self.flag_changes = tuw.FlagSet()
+        for run in runs:
+            self.flag_changes.merge_into_self(run.flag_changes)
+
         self.compute_clusters()
 
     def compute_clusters(self):

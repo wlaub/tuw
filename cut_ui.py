@@ -89,8 +89,7 @@ class Layout():
 
 
     def get_config(self):
-        result = sg.Column(
-layout = [[
+        result = [
     sg.Multiline(
         default_text = self.app.serialize_numbers(),
         size = (21,10),
@@ -122,22 +121,30 @@ layout = [[
                 )]
     for k,v in self.app.conditions.items()]
     ),
+    sg.Table(
+        values = [],
+        headings = ['Flag name', '#',],
+        cols_justification = ['r','l',],
+        auto_size_columns = False,
+        num_rows = 13,
+        col_widths = [15,4,],
+        expand_y = True,
+        key = 'flag_summary',
+        ),
 
+]
 
-]]
-            )
         return result
 
     def get_extract(self):
-        result = sg.Column(
-layout = [[
+        result = [
     sg.Table(
         values = [],
         headings = ['Condition', '#', '*'],
         cols_justification = ['r','l','l'],
         auto_size_columns = False,
         num_rows = 13,
-        col_widths = [17,5,5],
+        col_widths = [15,5,5],
         expand_y = True,
         key = 'extract_counts',
         ),
@@ -154,14 +161,11 @@ layout = [[
         size = (40,10),
         expand_y = True,
         )
-]]
-            )
+]
         return result
 
     def get_output(self):
-        result = sg.Column( expand_x = True,
-            layout=[
-[
+        result = [
 sg.Input(key = 'outfile',
     default_text = "_.mp4",
     size = (40, 3),
@@ -169,13 +173,10 @@ sg.Input(key = 'outfile',
     ),
 sg.Button('Go', key='do_cut', enable_events=True),
 ]
-            ])
         return result
 
     def get_inputs(self):
-        result = sg.Column( expand_x = True,
-            layout=[
-[
+        result = [
 sg.Column(layout=[
     [sg.Button('Add files', key='add_files', enable_events=True)],
     [sg.Button('Sort', key='sort_files', enable_events=True)],
@@ -188,13 +189,11 @@ DListbox(key = 'infiles',
     enable_events = True,
     ),
 ]
-            ])
 
         return result
 
     def get_clusters(self):
-        result = sg.Column(
-layout = [[
+        result = [
     DListbox(
         values = [],
         size = (8,17),
@@ -228,20 +227,19 @@ layout = [[
         key = 'cluster_render',
         border_width = 1,
         background_color = 'white',
-        size = (500,500),
+        size = (self.app.cluster_render_size,self.app.cluster_render_size),
         )
 
-]]
-            )
+]
         return result
 
 
 
     def get_layout(self):
-        return [[self.get_inputs(), ],
-                [self.get_config(), self.get_extract(),],
-                [self.get_clusters()],
-                [self.get_output()],
+        return [[*self.get_inputs(), ],
+                [*self.get_config(), *self.get_extract(),],
+                [*self.get_clusters()],
+                [*self.get_output()],
                 [sg.Output(size=(self.max_width, 10), expand_x=True, echo_stdout_stderr=True)],
                 ]
         pass
@@ -250,6 +248,7 @@ TUW_OUTPUTS = os.path.expanduser('~/.local/share/Steam/steamapps/common/Celeste/
 STAMP_FILE_PATH = '~/Videos/Streams'
 
 class App():
+    cluster_render_size = 420
 
     def __init__(self):
         self.infiles = []
@@ -277,6 +276,7 @@ class App():
         self.cluster_run_list = []
         self.cluster_run_selection = None
 
+        self.flag_changes = tuw.FlagSet()
 
     def serialize_numbers(self):
         return ', '.join(str(x) for x in self.numbers)
@@ -424,10 +424,10 @@ class App():
         width = xmax-xmin
         height = ymax-ymin
 
-        scale = 480/max(width, height)
+        scale = (self.cluster_render_size-20)/max(width, height)
 
-        xoff = (500-width*scale)/2
-        yoff = (500-height*scale)/2
+        xoff = (self.cluster_render_size-width*scale)/2
+        yoff = (self.cluster_render_size-height*scale)/2
 
         label = self.window['room_clusters'].get()
         if len(label) != 0:
@@ -482,6 +482,19 @@ class App():
         _, files = list(zip(*files))
         return files
 
+    def update_flags(self):
+        self.flag_changes = tuw.FlagSet()
+        for infile, cut_input in self.input_map.items():
+            self.flag_changes.merge_into_self(cut_input.flag_changes)
+
+        rows = []
+        for key, val in sorted(self.flag_changes.flags_changed.items(), key=lambda x: x[1]):
+            rows.append([key, val])
+
+        self.window['flag_summary'].update(rows)
+
+
+
     def update_inputs(self):
         for infile in self.window['infiles'].get_list_values():
             if not infile in self.input_map.keys():
@@ -490,6 +503,8 @@ class App():
                 except Exception as e:
                     print(f"Couldn't load {infile}: {e}")
                     raise
+
+        self.update_flags()
         self.extract()
         self.update_cluster_rooms()
 
