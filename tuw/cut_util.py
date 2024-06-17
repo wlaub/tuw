@@ -186,7 +186,7 @@ class CutInput:
                 longest_fails.append(longest)
 
 
-    def extract_runs(self, state_change_flags, collection_flags, numbers,
+    def extract_runs(self, state_change_flags, collection_flags, numbers, flag_whitelist = None,
                     room_change = True, state_change = True,
                     collection = True, spawn_change = True,
                     clusters = True, long_fail = True,):
@@ -196,6 +196,10 @@ class CutInput:
         extant_clusters = set()
 
         included_runs = set()
+
+        flag_changes = False
+        if tuw.StateChangeFlags.flag.value & state_change_flags != 0:
+            flag_changes = True
 
         counts = defaultdict(lambda:0)
         unique_counts = defaultdict(lambda:0)
@@ -207,8 +211,17 @@ class CutInput:
                 if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
                     conditions.add('room_change')
             if state_change:
-                if run.state_change_flags.value & state_change_flags:
-                    conditions.add('state change')
+                run_change_flags = run.state_change_flags.value & state_change_flags
+                if run_change_flags:
+                    if flag_changes and run_change_flags == tuw.StateChangeFlags.flag.value:
+                        if flag_whitelist is not None:
+                            passing_flags = run.flag_changes.flags_changed.keys() & flag_whitelist
+                            if len(passing_flags) > 0:
+                                conditions.add('state change')
+                        else:
+                            conditions.add('state change')
+                    else:
+                        conditions.add('state change')
             if collection:
                 if run.collection_flags.value & collection_flags:
                     conditions.add('collection')

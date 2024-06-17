@@ -253,7 +253,7 @@ class App():
     def __init__(self):
         self.infiles = []
 
-        self.state_change_flags = 0xcf
+        self.state_change_flags = 0xdf
         self.collection_flags = 0x7f
         self.numbers = [413, 420, 612, 720, 1025, 1337, 1413, 1612, 1420, 2012, 2020, 2600, 7859,]
 
@@ -277,6 +277,7 @@ class App():
         self.cluster_run_selection = None
 
         self.flag_changes = tuw.FlagSet()
+        self.flag_whitelist = set()
 
     def serialize_numbers(self):
         return ', '.join(str(x) for x in self.numbers)
@@ -302,6 +303,10 @@ class App():
 
         self.window['run_detail'].update(text)
 
+    def get_flag_whitelist(self):
+        self.flag_whitelist = {k for k,v in self.flag_changes.flags_changed.items() if v == 1}
+        return self.flag_whitelist
+
     def extract(self):
         infiles = self.window['infiles'].get_list_values()
         self.export_runs = export_runs = []
@@ -314,6 +319,7 @@ class App():
             total_runs += len(cut_input.runs)
             _runs, _counts, _ucounts = cut_input.extract_runs(
                     numbers = self.numbers,
+                    flag_whitelist = self.get_flag_whitelist(),
                     state_change_flags = self.state_change_flags,
                     collection_flags = self.collection_flags,
                     **self.conditions
