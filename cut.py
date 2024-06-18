@@ -53,7 +53,7 @@ export_runs = []
 counts = defaultdict(lambda:0)
 
 for cut_input in inputs:
-    _runs, _counts, _ = cut_input.extract_runs(**extract_config)
+    _runs, _counts, _, _ = cut_input.extract_runs(**extract_config)
     for key, val in _counts.items():
         counts[key] += val
 

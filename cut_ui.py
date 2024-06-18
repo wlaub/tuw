@@ -28,7 +28,29 @@ class ValidMixin():
             self.BackgroundColor = 'white'
         self.Widget.configure(background=self.BackgroundColor)
 
-class DListbox(sg.Listbox, ValidMixin):
+class MarkMixin():
+    def set_marked_items(self, indices):
+        self.marked_items = set(indices)
+        self._mark_items()
+
+    def _mark_items(self):
+        for idx, _ in enumerate(self.get_list_values()):
+            if idx in self.marked_items:
+                cfg = {'foreground': 'blue', 'selectforeground': 'blue'}
+            else:
+                cfg = {'foreground': 'black', 'selectforeground': 'black'}
+            self.Widget.itemconfigure(idx, **cfg)
+
+
+class DListbox(sg.Listbox, MarkMixin):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.marked_items = set()
+
+    def update(self, *args, **kwargs):
+        super().update(*args, **kwargs)
+        self._mark_items()
 
     def setup(self):
         self.bind('<Delete>', '+listbox_delete')
@@ -312,12 +334,13 @@ class App():
         self.export_runs = export_runs = []
         self.export_counts = counts = defaultdict(lambda:0)
         unique_counts = defaultdict(lambda:0)
+        self.included_clusters = set()
 
         total_runs = 0
         for infile in infiles:
             cut_input = self.input_map[infile]
             total_runs += len(cut_input.runs)
-            _runs, _counts, _ucounts = cut_input.extract_runs(
+            _runs, _counts, _ucounts, _clusters = cut_input.extract_runs(
                     numbers = self.numbers,
                     flag_whitelist = self.get_flag_whitelist(),
                     state_change_flags = self.state_change_flags,
@@ -329,6 +352,7 @@ class App():
             for key, val in _ucounts.items():
                 unique_counts[key] += val
 
+            self.included_clusters.update(_clusters)
 
             start_time = time.time()
             export_runs.extend(_runs)
@@ -354,6 +378,8 @@ class App():
         else:
             room_options, _ = zip(*self.cluster_room_list)
         self.window['cluster_rooms'].update(room_options)
+#        self.window['cluster_rooms'].set_marked_items([0])
+
 
     def update_cluster_room_selection(self):
         room = self.window['cluster_rooms'].get_indexes()
@@ -363,11 +389,17 @@ class App():
         if room_idx == self.cluster_room_selection:
             return
 
+        room_name = self.window['cluster_rooms'].get()[0]
+
         self.cluster_room_selection = room_idx
         cm = self.cluster_room_list[room_idx][1]
 
         values = list(x[0] for x in cm.clusters_by_size)
+
+        marks = [i for i, x in enumerate(values) if (room_name, x) in self.included_clusters]
+
         self.window['room_clusters'].update(values)
+        self.window['room_clusters'].set_marked_items(marks)
 
     def update_cluster_selection(self):
         label = self.window['room_clusters'].get()
@@ -381,6 +413,10 @@ class App():
         self.cluster_run_list = runs
         self.window['cluster_runs'].update([x.states[0].deaths for x in runs])
         self.cluster_run_selection = None
+
+        sel_runs = self.window['selected_runs'].get_list_values()
+        marks = [i for i,x  in enumerate(runs) if x.states[0].deaths in sel_runs]
+        self.window['cluster_runs'].set_marked_items(marks)
 
         centroid = tuw.clusters.get_centroid(cm.grp.clst, label)
         def fmt_centroid(x):
@@ -498,6 +534,7 @@ class App():
             rows.append([key, val])
 
         self.window['flag_summary'].update(rows)
+#        self.window['flag_summary'].set_marked_items([0])
 
 
 

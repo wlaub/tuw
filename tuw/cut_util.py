@@ -271,11 +271,9 @@ class CutInput:
                     export_runs.append(RunInclusion(idx, run, conditions))
                     included_runs.add(idx)
 
-
-
         export_runs = list(sorted(export_runs, key=lambda x: x.index))
 
-        return export_runs, counts, unique_counts
+        return export_runs, counts, unique_counts, extant_clusters
 
 
 
