@@ -25,7 +25,7 @@ class RunStats:
                 death_state.xpos, death_state.ypos,
                 self.run.states[0].xpos, self.run.states[0].ypos)
 
-        point = (0,
+        point = (self.idx,
                 death_state.xpos, death_state.ypos,
                 self.run.states[0].xpos, self.run.states[0].ypos)
 

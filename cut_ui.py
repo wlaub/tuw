@@ -277,7 +277,9 @@ class App():
 
         self.state_change_flags = 0xdf
         self.collection_flags = 0x7f
-        self.numbers = [413, 420, 612, 720, 1025, 1337, 1413, 1612, 1420, 2012, 2020, 2600, 7859,]
+        self.numbers = [413, 420, 612, 720, 1025, 1337, 1413, 1612, 1420, 2012, 2020, 2600, 4200, 7859,
+4220,
+]
 
         self.conditions = {
             'room_change': True,
@@ -324,6 +326,7 @@ class App():
         text = f'Run Details:\n{run.format()}'
 
         self.window['run_detail'].update(text)
+        self.update_cluster_run_selection()
 
     def get_flag_whitelist(self):
         self.flag_whitelist = {k for k,v in self.flag_changes.flags_changed.items() if v == 1}
@@ -458,6 +461,14 @@ class App():
             xmaxes.append(max(run.states, key=lambda x: x.xpos).xpos)
             ymaxes.append(max(run.states, key=lambda x: x.ypos).ypos)
 
+        sel_idx = self.window['selected_runs'].get_indexes()
+        for idx in sel_idx:
+            run = self.export_runs[idx].run
+            xmins.append(min(run.states, key=lambda x: x.xpos).xpos)
+            ymins.append(min(run.states, key=lambda x: x.ypos).ypos)
+            xmaxes.append(max(run.states, key=lambda x: x.xpos).xpos)
+            ymaxes.append(max(run.states, key=lambda x: x.ypos).ypos)
+
         xmin = min(xmins)
         ymin = min(ymins)
         ymax = max(ymaxes)
@@ -466,7 +477,10 @@ class App():
         width = xmax-xmin
         height = ymax-ymin
 
-        scale = (self.cluster_render_size-20)/max(width, height)
+        try:
+            scale = (self.cluster_render_size-20)/max(width, height)
+        except ZeroDivisionError:
+            scale = 1
 
         xoff = (self.cluster_render_size-width*scale)/2
         yoff = (self.cluster_render_size-height*scale)/2
@@ -494,6 +508,15 @@ class App():
             run = self.cluster_run_list[run_idx]
             points = [(xoff+scale*(x.xpos-xmin), yoff+scale*(x.ypos-ymin)) for x in run.states[:run.death_state_index]]
             canvas.create_line(points, fill = 'red')
+
+        for idx in sel_idx:
+            run = self.export_runs[idx].run
+            points = [(xoff+scale*(x.xpos-xmin), yoff+scale*(x.ypos-ymin)) for x in run.states[:run.death_state_index]]
+            canvas.create_line(points, fill = 'blue')
+
+
+
+
 
 
     def do_cut(self):
