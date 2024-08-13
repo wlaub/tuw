@@ -82,9 +82,11 @@ An unsigned short giving the total length of the remained of the packet (not inc
 |Name | Type | Offset | Description |
 |----|----|---|---|
 | button flags |  unsigned byte(1) | 0 | quick restart, pause, escape, crouch dash, talk, grab, dash, jump |
-| direction flags | unsigned byte(1) | 1 | 0, 0, 0, 0, up, down, left, right |
+| direction flags | unsigned byte(1) | 1 | mark 0, mark 1, mark 2, mark 3, up, down, left, right |
 | xaim | float (4) | 2 | Analog aim direction |
 | yaim | float (4) | 6 |  |
+
+The mark buttons can be bound in settings and used to manually flag events.
 
 ### Transient State (4 bytes)
 

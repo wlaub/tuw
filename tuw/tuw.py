@@ -96,6 +96,7 @@ class GameState():
         'dashes',
         'control_flags', 'status_flags',
         'button_flags', 'direction_flags',
+        'mark_flags',
         'xaim', 'yaim',
         'collection_flags', 'state_change_flags',
         'flag_changes',
@@ -125,7 +126,8 @@ class GameState():
         size = struct.calcsize(input_state_fmt)
         (buttons, directions, self.xaim, self.yaim) = struct.unpack(input_state_fmt, raw[:size])
         self.button_flags = ButtonFlags(buttons)
-        self.direction_flags = DirectionFlags(directions)
+        self.direction_flags = DirectionFlags(directions&0xf)
+        self.mark_flags = directions>>4
         raw = raw[size:]
 
         self.collection_flags = CollectionFlags(0)
@@ -248,6 +250,7 @@ class StateSequence():
         self.control_flags = ControlFlags(0)
         self.collection_flags = CollectionFlags(0)
         self.state_change_flags = StateChangeFlags(0)
+        self.mark_flags = 0
 
         self.flag_changes = FlagSet()
 
@@ -267,6 +270,7 @@ class StateSequence():
         self.control_flags |= state.control_flags
         self.collection_flags |= state.collection_flags
         self.state_change_flags |= state.state_change_flags
+        self.mark_flags |= state.mark_flags
         if self.death_state is None and ControlFlags.dead in state.control_flags:
             self.death_state = state
             self.death_state_index = len(self.states)-1

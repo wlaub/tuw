@@ -152,13 +152,13 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 | (jump ? 1 : 0)
             );
         }
-        public void pack_directions(bool up, bool down, bool left, bool right)
+        public void pack_directions(bool up, bool down, bool left, bool right, bool mark_0, bool mark_1, bool mark_2, bool mark_3)
         {
             direction_flags = (byte)(
-                  (false ? 1 << 7 : 0)
-                | (false ? 1 << 6 : 0)
-                | (false ? 1 << 5 : 0)
-                | (false ? 1 << 4 : 0)
+                  (mark_3 ? 1 << 7 : 0)
+                | (mark_2 ? 1 << 6 : 0)
+                | (mark_1 ? 1 << 5 : 0)
+                | (mark_0 ? 1 << 4 : 0)
                 | (up ? 1 << 3 : 0)
                 | (down ? 1 << 2 : 0)
                 | (left ? 1 << 1 : 0)
@@ -856,7 +856,12 @@ namespace Celeste.Mod.TheUltimateWednesday {
             bool up = Input.MoveY == 1;
             bool down = Input.MoveY == -1;
 
-            input_state.pack_directions(up, down, left, right);
+            input_state.pack_directions(up, down, left, right, 
+                Settings.mark_button_0.Pressed,
+                Settings.mark_button_1.Pressed,
+                Settings.mark_button_2.Pressed,
+                Settings.mark_button_3.Pressed
+            );
 
             input_state.xaim = Input.Aim.Value.X;
             input_state.yaim = Input.Aim.Value.Y;

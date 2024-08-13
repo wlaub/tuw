@@ -278,7 +278,6 @@ class App():
         self.state_change_flags = 0xdf
         self.collection_flags = 0x7f
         self.numbers = [413, 420, 612, 720, 1025, 1337, 1413, 1612, 1420, 2012, 2020, 2600, 4200, 7859,
-4220,
 ]
 
         self.conditions = {

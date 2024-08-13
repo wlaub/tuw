@@ -35,6 +35,35 @@ class ClipRun(tuw.StateSequence):
 
         self._add_state(state)
 
+    #TODO for hacking on
+    """
+    def _add_state(self, state):
+        self.states.append(state)
+        self.rooms.add(state.room)
+        if len(self.room_order) == 0 or self.room_order[-1] != state.room:
+            self.room_order.append(state.room)
+        self.control_flags |= state.control_flags
+
+        self.state_change_flags |= state.state_change_flags
+        if self.death_state is None and tuw.ControlFlags.dead in state.control_flags:
+            self.death_state = state
+            self.death_state_index = len(self.states)-1
+
+        #This is trying to exclude followers added on spawn
+        if self.death_state is None and len(self.states) > 300:
+            self.collection_flags |= state.collection_flags
+
+        def _inc(data, key):
+            if not key in data.keys():
+                data[key] = 1
+            else:
+                data[key] += 1
+
+        for flag_name, flag_state in state.flag_changes:
+            self.flag_changes.add_flag(flag_name, flag_state)
+    """
+
+
     def match_spawn(self, other):
         dx = self.states[0].xpos - other.states[0].xpos
         dy = self.states[0].ypos - other.states[0].ypos
@@ -87,7 +116,7 @@ class RunInclusion:
 
 
         lines.append('')
-        condition_keys = ['room_change', 'state change', 'collection', 'spawn change prev', 'spawn change next', 'cluster', 'long fail', 'numbers']
+        condition_keys = ['room_change', 'state change', 'collection', 'spawn change prev', 'spawn change next', 'cluster', 'long fail', 'numbers', 'mark']
         condition_lines = [x for x in condition_keys if x in self.conditions]
         lines.extend(condition_lines)
 
@@ -189,7 +218,8 @@ class CutInput:
     def extract_runs(self, state_change_flags, collection_flags, numbers, flag_whitelist = None,
                     room_change = True, state_change = True,
                     collection = True, spawn_change = True,
-                    clusters = True, long_fail = True,):
+                    clusters = True, long_fail = True,
+                    mark_buttons = True):
         runs = self.runs
 
         export_runs = []
@@ -206,6 +236,10 @@ class CutInput:
         for idx, run in enumerate(runs):
             conditions = set()
             cluster = self.cluster_map.get(run, None)
+
+            if mark_buttons:
+                if run.mark_flags > 0:
+                    conditions.add('mark')
 
             if room_change:
                 if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
