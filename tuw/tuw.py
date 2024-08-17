@@ -10,6 +10,7 @@ class ControlFlags(enum.Flag):
     cutscene = 32
     transition = 16
     paused = 8
+    gravity_inverted = 4
 
 class StatusFlags(enum.Flag):
     holding = 128

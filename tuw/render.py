@@ -42,12 +42,15 @@ class Plotter():
 
     @staticmethod
     def _state_box(x):
-        pos = (x.xpos-4, x.ypos)
+        pos = [x.xpos-4, x.ypos]
         h = 11
         if tuw.StatusFlags.crouched in x.status_flags:
             h = 6
         if tuw.PlayerState.star_fly == x.state:
             h = 8
+        if tuw.ControlFlags.gravity_inverted not in x.control_flags:
+            pos[1] -= h
+        pos = tuple(pos)
         return (*pos, 8, h)
 
     def new_image(self):
@@ -138,7 +141,7 @@ class Plotter():
             prev_deaths = x.deaths
             line_points.append(center)
 
-            self._rect(0, rect, (0,0,0,16))
+            self._rect(0, rect, (0,0,0,128))
 
             if tuw.ControlFlags.dead in x.control_flags:
                 self._rect(10, rect, (255,0,0,128))
@@ -163,8 +166,8 @@ class Plotter():
             line_sets.append(line_points)
 
 
-        for lines in line_sets:
-            self._lines(30, lines, (255,255,255), 2)
+#        for lines in line_sets:
+#            self._lines(30, lines, (255,255,255), 2)
 
         for state in self.spawn_points:
             rect = self._state_box(state)

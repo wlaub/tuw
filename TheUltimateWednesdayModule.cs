@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework;
 using Monocle;
 
 using MonoMod.Utils;
+using MonoMod.ModInterop;
 
 using Celeste;
 using Celeste.Mod;
@@ -81,7 +82,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
             return result;
         }
 
-        public void pack_control_flags(bool dead, bool control, bool cutscene, bool transition, bool paused)
+        public void pack_control_flags(bool dead, bool control, bool cutscene, bool transition, bool paused, bool gravity_inverted)
         {
             control_flags = (byte)(
                   (dead ? 1 << 7 : 0)
@@ -89,7 +90,7 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 | (cutscene ? 1 << 5 : 0)
                 | (transition ? 1 << 4 : 0)
                 | (paused ? 1 << 3 : 0)
-                | (false ? 1 << 2 : 0)
+                | (gravity_inverted ? 1 << 2 : 0)
                 | (false ? 1 << 1 : 0)
                 | (false ? 1 : 0)
                 );
@@ -272,6 +273,11 @@ namespace Celeste.Mod.TheUltimateWednesday {
         }
     }
 
+    [ModImportName("GravityHelper")]
+    public static class GravityHelperImports{
+        public static Func<int> GetPlayerGravity;
+    }
+
     public class TheUltimateWednesdayModule : EverestModule {
         public static TheUltimateWednesdayModule Instance { get; private set; }
 
@@ -370,6 +376,8 @@ namespace Celeste.Mod.TheUltimateWednesday {
         }
 
         public override void Load() {
+            typeof(GravityHelperImports).ModInterop();
+
             Everest.Events.Level.OnEnter += on_enter_hook;
             Everest.Events.Level.OnExit += on_exit_hook;
             Everest.Events.LevelLoader.OnLoadingThread += on_loading_thread;
@@ -804,7 +812,11 @@ namespace Celeste.Mod.TheUltimateWednesday {
                 bool cutscene = level.InCutscene;
                 bool transition = level.Transitioning;
                 bool paused = level.Paused;
-                player_state.pack_control_flags(dead, control, cutscene, transition, paused);
+                int gravity = (GravityHelperImports.GetPlayerGravity?.Invoke() ?? 0);
+                bool gravity_inverted = gravity != 0;
+//                Logger.Log(LogLevel.Info, "tuw", $"G {gravity}");
+
+                player_state.pack_control_flags(dead, control, cutscene, transition, paused, gravity_inverted);
 
                 bool holding = (player.Holding != null);
                 bool ground = player.LoseShards;
@@ -856,12 +868,19 @@ namespace Celeste.Mod.TheUltimateWednesday {
             bool up = Input.MoveY == 1;
             bool down = Input.MoveY == -1;
 
+            byte old_flags = input_state.direction_flags;
+
             input_state.pack_directions(up, down, left, right, 
                 Settings.mark_button_0.Pressed,
                 Settings.mark_button_1.Pressed,
                 Settings.mark_button_2.Pressed,
                 Settings.mark_button_3.Pressed
             );
+
+            if ((old_flags&0xf0)!=(input_state.direction_flags & 0xf0) && (input_state.direction_flags & 0xf0) != 0)
+            {
+                Logger.Log(LogLevel.Info, "tuw", $"Mark {header_state.deaths}");
+            }
 
             input_state.xaim = Input.Aim.Value.X;
             input_state.yaim = Input.Aim.Value.Y;
