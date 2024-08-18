@@ -175,7 +175,7 @@ class Layout():
         size = (8,10),
         expand_y = True,
         key = 'selected_runs',
-        select_mode = sg.LISTBOX_SELECT_MODE_SINGLE,
+        select_mode = sg.LISTBOX_SELECT_MODE_EXTENDED,
         enable_events = True,
         ),
     sg.Text(
@@ -281,6 +281,7 @@ class App():
 ]
 
         self.conditions = {
+            'mark_buttons': True,
             'room_change': True,
             'state_change': True,
             'collection': True,
