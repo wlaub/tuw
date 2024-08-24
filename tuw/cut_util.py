@@ -116,7 +116,7 @@ class RunInclusion:
 
 
         lines.append('')
-        condition_keys = ['room_change', 'state change', 'collection', 'spawn change prev', 'spawn change next', 'cluster', 'long fail', 'numbers', 'mark']
+        condition_keys = ['room_change', 'state change', 'collection', 'spawn change prev', 'spawn change next', 'cluster', 'long fail', 'numbers', 'mark', 'postmark']
         condition_lines = [x for x in condition_keys if x in self.conditions]
         lines.extend(condition_lines)
 
@@ -237,9 +237,20 @@ class CutInput:
             conditions = set()
             cluster = self.cluster_map.get(run, None)
 
+            prev_run = None
+            if idx > 0:
+                prev_run = runs[idx-1]
+            next_run = None
+            if idx < len(runs)-1:
+                next_run = runs[idx+1]
+
             if mark_buttons:
-                if run.mark_flags > 0:
+                if run.mark_flags != 0:
+                    print(f'{idx}: {run.mark_flags}')
+                if run.mark_flags & 0x1 != 0:
                     conditions.add('mark')
+                if next_run is not None and next_run.mark_flags &0x2 != 0:
+                    conditions.add('postmark')
 
             if room_change:
                 if len(run.rooms) >1 or idx == 0 or idx == len(runs)-1:
@@ -338,7 +349,11 @@ class Clipper:
         for run in export_runs:
 
             for start, end in run.get_segments():
-                vidname, video_start_time = self.get_clip_info(start, end)
+                try:
+                    vidname, video_start_time = self.get_clip_info(start, end)
+                except RuntimeError as e:
+                    print(e)
+                    continue
 
                 start -= video_start_time
                 end -= video_start_time
