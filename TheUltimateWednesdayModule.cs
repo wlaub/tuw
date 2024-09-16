@@ -564,6 +564,13 @@ namespace Celeste.Mod.TheUltimateWednesday {
             stream_state.chapter_name = Dialog.Get(map_name);
             stream_state.map_name = Dialog.Get(mod_name);
 
+            string author_key = map_name + "_author";
+            if(Dialog.Has(author_key))
+            {
+                string author_name = Dialog.Get(author_key);
+                stream_state.chapter_name += " - " + author_name;
+            }
+
             if(Settings.write_file)
             {
                 open_dump_file();
