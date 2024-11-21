@@ -74,16 +74,25 @@ class ClipRun(tuw.StateSequence):
     def get_segments(self):
         result = []
 
+        #3853, 3810, 3811
         #this sure is a hideous way of removing paused segments
         #that aren't part of the beginning or end of a run
         paused = self.states[0].control_flags.value&8
         left = self.states[0]
+        override = False
         for state in self.states[1:]:
             tpaused = state.control_flags.value&8
+            if state.mark_flags & 0x04: #mark button 3
+                override = True
+                if len(result) > 0: #un-cut the last segment
+                    result = result[:-1]
             if tpaused and not paused: #pause
                 result.append([left, state])
             if not tpaused and paused: #unpause
-                left = state
+                if override:
+                    override = False
+                else: #mark the end of the pause as the next segment start
+                    left = state
             paused = tpaused
 
         if len(result) > 0:
@@ -390,6 +399,10 @@ class Clipper:
         for start, end, base, _ in segments:
             clip = base.subclip(start, end)
             clips.append(clip)
+
+#        start, end, base, _ = segments[-1]
+#        clip = base.subclip(3600+25*60+17.27, 3600+29*60+4.613)
+#        clips = [clip]
 
         print(f'{len(clips)=})')
 
