@@ -11,11 +11,28 @@ import moviepy.editor
 import FreeSimpleGUI as sg
 import tkinter as fk
 import tkfilebrowser as tkfb
+from proglog import ProgressBarLogger
 
 import tuw
 import tuw.cut_util
 import tuw.clusters
 
+
+class ProgressMachine(ProgressBarLogger):
+
+    def callback(self, **changes):
+        pass
+
+    def bars_callback(self, bar, attr, value, old_value = None):
+        message = bar
+        if bar == 't':
+            message = 'exporting'
+        elif bar == 'chunk':
+            message = 'chunking'
+
+        result = sg.one_line_progress_meter('Export progress', value, self.bars[bar]['total'], message)
+        if not result:
+            raise RuntimeError('Export cancelled')
 
 
 class ValidMixin():
@@ -256,8 +273,12 @@ DListbox(key = 'infiles',
         return result
 
 
+    def get_progress_bar(self):
+        self.app.progress_machine = ProgressMachine()
+
 
     def get_layout(self):
+        self.get_progress_bar()
         return [[*self.get_inputs(), ],
                 [*self.get_config(), *self.get_extract(),],
                 [*self.get_clusters()],
@@ -535,7 +556,7 @@ class App():
             start_time = time.time()
             clipper = tuw.cut_util.Clipper(STAMP_FILE_PATH)
             segments = clipper.compute_clips(runs)
-            clipper.export_moviepy(segments, out_file)
+            clipper.export_moviepy(segments, out_file, logger=self.progress_machine)
             duration = time.time()-start_time
             print(f'Finished in {duration:.1f} s')
         except Exception as e:

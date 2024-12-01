@@ -392,7 +392,7 @@ class Clipper:
             output_file = os.path.join(self.stamp_file_path, output_file)
         return output_file
 
-    def export_moviepy(self, segments, output_file):
+    def export_moviepy(self, segments, output_file, logger = None):
         output_file = self.get_full_output_file(output_file)
 
         clips = []
@@ -407,7 +407,7 @@ class Clipper:
         print(f'{len(clips)=})')
 
         out_clip = moviepy.editor.concatenate_videoclips(clips)
-        out_clip.write_videofile(output_file, codec='h264_nvenc', logger=None)
+        out_clip.write_videofile(output_file, codec='h264_nvenc', logger=logger)
 
     def _export_gpu(self, segments, output_file):
         output_file = self.get_full_output_file(output_file)
